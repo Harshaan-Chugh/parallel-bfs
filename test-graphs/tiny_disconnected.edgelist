@@ -1,0 +1,10 @@
+# Two disconnected components:
+#   Component 1: 0 - 1 - 2 - 3
+#   Component 2: 4 - 5, 6 (isolated), 7 (isolated)
+# BFS from 0: depths = [0, 1, 2, 3, -1, -1, -1, -1]
+8 5
+0 1
+1 2
+2 3
+4 5
+6 7

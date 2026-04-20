@@ -1,0 +1,9 @@
+# Cycle graph: 0 - 1 - 2 - 3 - 4 - 5 - 0
+# BFS from 0: depths = [0, 1, 2, 3, 3, 2] (two shortest paths to middle nodes)
+6 6
+0 1
+1 2
+2 3
+3 4
+4 5
+5 0

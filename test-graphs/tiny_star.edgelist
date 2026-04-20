@@ -1,0 +1,11 @@
+# Star graph: hub = 0, spokes = 1..7
+# BFS from 0: depths = [0, 1, 1, 1, 1, 1, 1, 1]
+# BFS from 1: depths = [1, 0, 2, 2, 2, 2, 2, 2]
+8 7
+0 1
+0 2
+0 3
+0 4
+0 5
+0 6
+0 7
