@@ -17,13 +17,12 @@ The **`baseline`** kernel is the simplest approach: it assigns exactly **one thr
 - The frontier array stores a 0 or 1 per vertex, but uses a full `int` (4 bytes) for each one. That's super wasteful — we're moving 32× more data than we need to every kernel launch.
 - I packed the frontier into a `uint32_t` bitmap instead, where each bit represents one vertex. To check vertex `j`, I just do `frontier_bm[j/32] & (1 << (j%32))`. Writing to the new frontier uses `atomicOr` on the bitmap word.
 - This shines on dense graphs with big frontiers. For a 100K-vertex graph, the frontier goes from 400 KB down to ~12.5 KB, which is way more cache-friendly.
-- The tradeoff is that the bit-twiddling and `atomicOr` contention hurt on sparse graphs where the frontier is small anyway — the overhead isn't worth the bandwidth savings.
+- The tradeoff is that the bit-twiddling and `atomicOr` contention hurt on sparse graphs where the frontier is small anyway.
 
 ## Optimization 3: Push-Pull Hybrid (Direction-Optimizing SpMV)
 
 - Building off the first two optimizations, I noticed that both were still "pull" based and every unvisited vertex scans its entire neighbor list every level, even if the frontier only has 1 vertex in it. This wastes a ton of work in the early and late stages of BFS.
 - I added a "push" kernel where only the vertices *in the frontier* do work, pushing themselves to their neighbors. Then, I set up the host to automatically switch between the push kernel and the pull kernel every level based on the frontier's size. If the frontier is small, we push. If it's huge, we pull.
-- This is the SpMV equivalent of Beamer's direction-optimizing BFS. It massively cuts down on wasted edge traversals.
 
 ## Optimization 4: Fusing Warp-Cooperative + Bitmap
 
@@ -49,11 +48,9 @@ Here's how all the optimizations stack up. These runtimes (in milliseconds) were
 | large_powerlaw | 40 | 3 | 2.81 | 2.56 | 2.46 | 4.38 | **2.41** |
 | large_sparse | 10 | 7 | 11.34 | 1.79 | 18.15 | 1.79 | **1.58** |
 
-*Note: The chain graph is a pathological worst-case scenario for all GPU BFS algorithms because it forces 999 sequential kernel launches with virtually no parallelism per level.*
+*Note: The chain graph is a worst-case scenario for all GPU BFS algorithms because it forces 999 sequential kernel launches with virtually no parallelism per level.*
 
 ## References
-
-The optimizations implemented here are heavily inspired by foundational research in parallel graph algorithms:
 
 1. **Direction-Optimizing BFS (Push-Pull):**
    *Beamer, S., Asanović, K., & Patterson, D. (2012). "Direction-Optimizing Breadth-First Search." Proceedings of the International Conference on High Performance Computing, Networking, Storage and Analysis (SC12).*
