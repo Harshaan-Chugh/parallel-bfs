@@ -8,8 +8,13 @@
  * The adjacency matrix A is stored in CSR (row_ptr, col_idx).
  * The frontier vectors are dense boolean/int vectors of length num_vertices.
  *
+ * Kernel variants (selectable at runtime):
+ *   baseline - one thread per row, scalar scan
+ *   warp     - warp-cooperative row processing for load balance
+ *   bitmap   - bitmap-compressed frontier (32x memory reduction)
+ *
  * Build: see root Makefile
- * Usage: ./build/bfs_linalg <graph.edgelist> <source_vertex>
+ * Usage: ./build/bfs_linalg <graph.edgelist> <source_vertex> [baseline|warp|bitmap] [--dump]
  */
 
 #include <stdio.h>
@@ -33,29 +38,19 @@
     } while (0)
 
 /* ============================================================
- * GPU Kernels (TODO: implement these)
+ * Kernel variant selection
  * ============================================================ */
+enum KernelVariant { BASELINE = 0, WARP_COOP = 1, BITMAP = 2 };
 
-/*
- * SpMV-based frontier expansion kernel.
+/* ============================================================
+ * Kernel 1: Baseline SpMV BFS (one thread per row)
  *
- * For each vertex i (row of the adjacency matrix):
- *   If vertex i is NOT visited, check if any neighbor j has frontier[j] == 1.
- *   This is equivalent to: new_frontier[i] = OR over j in neighbors(i) of frontier[j]
- *   ...but only for unvisited vertices.
- *
- * Params:
- *   row_ptr   - CSR row pointers (size: num_vertices + 1)
- *   col_idx   - CSR column indices (size: num_edges)
- *   frontier  - current frontier vector (1 = in frontier, 0 = not)
- *   visited   - visited vector (1 = visited, 0 = not)
- *   new_frontier - output: next frontier
- *   depth     - output: BFS depth array
- *   level     - current BFS level
- *   num_vertices - number of vertices
- *   found_new - output: flag set to 1 if any new vertex was found
- */
-__global__ void spmv_bfs_kernel(
+ * Each thread owns one row (vertex) of the adjacency matrix.
+ * It checks whether any neighbor is in the current frontier.
+ * This is the classic pull-based SpMV: y = A * x
+ *   x = frontier, y = new_frontier
+ * ============================================================ */
+__global__ void spmv_bfs_baseline(
     const int *row_ptr,
     const int *col_idx,
     const int *frontier,
@@ -66,25 +61,123 @@ __global__ void spmv_bfs_kernel(
     int        num_vertices,
     int       *found_new)
 {
-    /* TODO: Implement SpMV-based BFS expansion
-     *
-     * Each thread handles one row (vertex) of the matrix:
-     *   1. if visited[i] -> skip
-     *   2. for each neighbor j in col_idx[row_ptr[i]..row_ptr[i+1]):
-     *        if frontier[j] == 1:
-     *          new_frontier[i] = 1
-     *          visited[i] = 1
-     *          depth[i] = level
-     *          *found_new = 1
-     *          break
-     */
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i >= num_vertices) return;
+    if (visited[i]) return;  /* already discovered — skip entire row */
+
+    int row_start = row_ptr[i];
+    int row_end   = row_ptr[i + 1];
+
+    for (int e = row_start; e < row_end; e++) {
+        if (frontier[col_idx[e]]) {   /* neighbor in frontier? */
+            new_frontier[i] = 1;
+            visited[i]      = 1;
+            depth[i]        = level;
+            atomicOr(found_new, 1);   /* signal host: keep going */
+            break;                    /* one parent suffices for BFS */
+        }
+    }
 }
 
 /* ============================================================
- * Host BFS driver
+ * Kernel 2: Warp-Cooperative SpMV BFS
+ *
+ * Problem: high-degree vertices cause load imbalance — one thread
+ * scans thousands of edges while 31 warp-mates idle.
+ *
+ * Solution: all 32 lanes in a warp cooperatively scan the same row.
+ * Each lane processes every 32nd edge. __any_sync aggregates results.
+ * ============================================================ */
+__global__ void spmv_bfs_warp(
+    const int *row_ptr,
+    const int *col_idx,
+    const int *frontier,
+    int       *visited,
+    int       *new_frontier,
+    int       *depth,
+    int        level,
+    int        num_vertices,
+    int       *found_new)
+{
+    /* Each warp processes one vertex */
+    int warp_id   = (blockIdx.x * blockDim.x + threadIdx.x) / 32;
+    int lane      = threadIdx.x & 31;   /* lane within the warp (0-31) */
+
+    if (warp_id >= num_vertices) return;
+
+    int i = warp_id;
+    if (visited[i]) return;
+
+    int row_start = row_ptr[i];
+    int row_end   = row_ptr[i + 1];
+    int hit       = 0;
+
+    /* Each lane strides through the row's edges */
+    for (int e = row_start + lane; e < row_end; e += 32) {
+        if (frontier[col_idx[e]]) {
+            hit = 1;
+            break;    /* this lane found a match */
+        }
+    }
+
+    /* Aggregate across the warp: did ANY lane find a frontier neighbor? */
+    unsigned mask = __ballot_sync(0xFFFFFFFF, hit);
+    if (mask && lane == 0) {
+        new_frontier[i] = 1;
+        visited[i]      = 1;
+        depth[i]        = level;
+        atomicOr(found_new, 1);
+    }
+}
+
+/* ============================================================
+ * Kernel 3: Bitmap Frontier SpMV BFS
+ *
+ * Problem: dense int frontier vectors waste bandwidth — 4 bytes
+ * per vertex but only 1 bit of information.
+ *
+ * Solution: pack the frontier into a uint32 bitmap.
+ * Each bit represents one vertex. 32x memory reduction.
+ * ============================================================ */
+__global__ void spmv_bfs_bitmap(
+    const int      *row_ptr,
+    const int      *col_idx,
+    const unsigned *frontier_bm,   /* bitmap: bit j set = vertex j in frontier */
+    int            *visited,
+    unsigned       *new_frontier_bm,
+    int            *depth,
+    int             level,
+    int             num_vertices,
+    int            *found_new)
+{
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i >= num_vertices) return;
+    if (visited[i]) return;
+
+    int row_start = row_ptr[i];
+    int row_end   = row_ptr[i + 1];
+
+    for (int e = row_start; e < row_end; e++) {
+        int j     = col_idx[e];
+        /* Check if bit j is set in the frontier bitmap */
+        unsigned word = frontier_bm[j >> 5];        /* j / 32 */
+        unsigned bit  = 1u << (j & 31);             /* j % 32 */
+        if (word & bit) {
+            /* Set bit i in new_frontier bitmap (atomic) */
+            atomicOr(&new_frontier_bm[i >> 5], 1u << (i & 31));
+            visited[i] = 1;
+            depth[i]   = level;
+            atomicOr(found_new, 1);
+            break;
+        }
+    }
+}
+
+/* ============================================================
+ * Host BFS driver — baseline & warp variants (dense int frontier)
  * ============================================================ */
 
-void bfs_linalg(const Graph *g, int source, int *h_depth) {
+void bfs_linalg_dense(const Graph *g, int source, int *h_depth, KernelVariant variant) {
     int V = g->num_vertices;
     int E = g->num_edges;
 
@@ -127,20 +220,33 @@ void bfs_linalg(const Graph *g, int source, int *h_depth) {
     int level = 1;
     int h_found_new = 1;
 
-    /* TODO: Choose appropriate block/grid sizes */
     int blockSize = 256;
-    int gridSize  = (V + blockSize - 1) / blockSize;
+    int gridSize;
+
+    if (variant == WARP_COOP) {
+        /* Warp variant: one warp (32 threads) per vertex */
+        gridSize = (V * 32 + blockSize - 1) / blockSize;
+    } else {
+        /* Baseline: one thread per vertex */
+        gridSize = (V + blockSize - 1) / blockSize;
+    }
 
     while (h_found_new) {
         h_found_new = 0;
         CUDA_CHECK(cudaMemcpy(d_found_new, &h_found_new, sizeof(int), cudaMemcpyHostToDevice));
         CUDA_CHECK(cudaMemset(d_new_frontier, 0, V * sizeof(int)));
 
-        /* TODO: Launch SpMV BFS kernel */
-        spmv_bfs_kernel<<<gridSize, blockSize>>>(
-            d_row_ptr, d_col_idx,
-            d_frontier, d_visited, d_new_frontier,
-            d_depth, level, V, d_found_new);
+        if (variant == WARP_COOP) {
+            spmv_bfs_warp<<<gridSize, blockSize>>>(
+                d_row_ptr, d_col_idx,
+                d_frontier, d_visited, d_new_frontier,
+                d_depth, level, V, d_found_new);
+        } else {
+            spmv_bfs_baseline<<<gridSize, blockSize>>>(
+                d_row_ptr, d_col_idx,
+                d_frontier, d_visited, d_new_frontier,
+                d_depth, level, V, d_found_new);
+        }
 
         CUDA_CHECK(cudaDeviceSynchronize());
 
@@ -169,17 +275,117 @@ void bfs_linalg(const Graph *g, int source, int *h_depth) {
 }
 
 /* ============================================================
+ * Host BFS driver — bitmap variant
+ * ============================================================ */
+
+void bfs_linalg_bitmap(const Graph *g, int source, int *h_depth) {
+    int V = g->num_vertices;
+    int E = g->num_edges;
+    int bm_words = (V + 31) / 32;  /* number of uint32 words in bitmap */
+
+    /* Initialize host depth array */
+    for (int i = 0; i < V; i++) h_depth[i] = -1;
+    h_depth[source] = 0;
+
+    /* ---- Allocate device memory ---- */
+    int      *d_row_ptr, *d_col_idx;
+    unsigned *d_frontier_bm, *d_new_frontier_bm;
+    int      *d_visited, *d_depth;
+    int      *d_found_new;
+
+    CUDA_CHECK(cudaMalloc(&d_row_ptr,         (V + 1) * sizeof(int)));
+    CUDA_CHECK(cudaMalloc(&d_col_idx,         E * sizeof(int)));
+    CUDA_CHECK(cudaMalloc(&d_frontier_bm,     bm_words * sizeof(unsigned)));
+    CUDA_CHECK(cudaMalloc(&d_new_frontier_bm, bm_words * sizeof(unsigned)));
+    CUDA_CHECK(cudaMalloc(&d_visited,         V * sizeof(int)));
+    CUDA_CHECK(cudaMalloc(&d_depth,           V * sizeof(int)));
+    CUDA_CHECK(cudaMalloc(&d_found_new,       sizeof(int)));
+
+    /* ---- Copy graph to device ---- */
+    CUDA_CHECK(cudaMemcpy(d_row_ptr, g->row_ptr, (V + 1) * sizeof(int), cudaMemcpyHostToDevice));
+    CUDA_CHECK(cudaMemcpy(d_col_idx, g->col_idx, E * sizeof(int),       cudaMemcpyHostToDevice));
+    CUDA_CHECK(cudaMemcpy(d_depth,   h_depth,    V * sizeof(int),       cudaMemcpyHostToDevice));
+
+    /* ---- Initialize frontier bitmap and visited ---- */
+    unsigned *h_frontier_bm = (unsigned *)calloc(bm_words, sizeof(unsigned));
+    int      *h_visited     = (int *)calloc(V, sizeof(int));
+    h_frontier_bm[source >> 5] |= (1u << (source & 31));
+    h_visited[source] = 1;
+
+    CUDA_CHECK(cudaMemcpy(d_frontier_bm, h_frontier_bm, bm_words * sizeof(unsigned), cudaMemcpyHostToDevice));
+    CUDA_CHECK(cudaMemcpy(d_visited,     h_visited,     V * sizeof(int),              cudaMemcpyHostToDevice));
+
+    free(h_frontier_bm);
+    free(h_visited);
+
+    /* ---- BFS iteration ---- */
+    int level = 1;
+    int h_found_new = 1;
+    int blockSize = 256;
+    int gridSize  = (V + blockSize - 1) / blockSize;
+
+    while (h_found_new) {
+        h_found_new = 0;
+        CUDA_CHECK(cudaMemcpy(d_found_new, &h_found_new, sizeof(int), cudaMemcpyHostToDevice));
+        CUDA_CHECK(cudaMemset(d_new_frontier_bm, 0, bm_words * sizeof(unsigned)));
+
+        spmv_bfs_bitmap<<<gridSize, blockSize>>>(
+            d_row_ptr, d_col_idx,
+            d_frontier_bm, d_visited, d_new_frontier_bm,
+            d_depth, level, V, d_found_new);
+
+        CUDA_CHECK(cudaDeviceSynchronize());
+
+        CUDA_CHECK(cudaMemcpy(&h_found_new, d_found_new, sizeof(int), cudaMemcpyDeviceToHost));
+
+        /* Swap frontier bitmap pointers */
+        unsigned *tmp = d_frontier_bm;
+        d_frontier_bm = d_new_frontier_bm;
+        d_new_frontier_bm = tmp;
+
+        level++;
+    }
+
+    /* ---- Copy results back ---- */
+    CUDA_CHECK(cudaMemcpy(h_depth, d_depth, V * sizeof(int), cudaMemcpyDeviceToHost));
+
+    /* ---- Cleanup ---- */
+    CUDA_CHECK(cudaFree(d_row_ptr));
+    CUDA_CHECK(cudaFree(d_col_idx));
+    CUDA_CHECK(cudaFree(d_frontier_bm));
+    CUDA_CHECK(cudaFree(d_new_frontier_bm));
+    CUDA_CHECK(cudaFree(d_visited));
+    CUDA_CHECK(cudaFree(d_depth));
+    CUDA_CHECK(cudaFree(d_found_new));
+}
+
+/* ============================================================
  * Main
  * ============================================================ */
 
 int main(int argc, char *argv[]) {
     if (argc < 3) {
-        fprintf(stderr, "Usage: %s <graph.edgelist> <source_vertex>\n", argv[0]);
+        fprintf(stderr,
+            "Usage: %s <graph.edgelist> <source_vertex> [baseline|warp|bitmap] [--dump]\n",
+            argv[0]);
         return EXIT_FAILURE;
     }
 
     const char *graph_file = argv[1];
     int source = atoi(argv[2]);
+
+    /* Parse optional kernel variant */
+    KernelVariant variant = BASELINE;
+    int dump = 0;
+
+    for (int a = 3; a < argc; a++) {
+        if (strcmp(argv[a], "warp") == 0)        variant = WARP_COOP;
+        else if (strcmp(argv[a], "bitmap") == 0)  variant = BITMAP;
+        else if (strcmp(argv[a], "baseline") == 0) variant = BASELINE;
+        else if (strcmp(argv[a], "--dump") == 0)  dump = 1;
+    }
+
+    const char *variant_names[] = {"baseline", "warp-cooperative", "bitmap"};
 
     /* Use only 1 GPU (GPU 0) */
     CUDA_CHECK(cudaSetDevice(0));
@@ -190,6 +396,7 @@ int main(int argc, char *argv[]) {
         return EXIT_FAILURE;
     }
     print_graph_info(&g);
+    printf("Kernel variant: %s\n", variant_names[variant]);
 
     if (source < 0 || source >= g.num_vertices) {
         fprintf(stderr, "Error: source vertex %d out of range [0, %d)\n",
@@ -198,13 +405,30 @@ int main(int argc, char *argv[]) {
         return EXIT_FAILURE;
     }
 
-    /* Run BFS */
+    /* Allocate depth array */
     int *depth = (int *)malloc(g.num_vertices * sizeof(int));
 
-    /* TODO: Add timing with CUDA events */
-    bfs_linalg(&g, source, depth);
+    /* ---- Timed BFS ---- */
+    cudaEvent_t t_start, t_stop;
+    CUDA_CHECK(cudaEventCreate(&t_start));
+    CUDA_CHECK(cudaEventCreate(&t_stop));
+    CUDA_CHECK(cudaEventRecord(t_start));
 
-    /* Print results (small graphs only) or summary */
+    if (variant == BITMAP) {
+        bfs_linalg_bitmap(&g, source, depth);
+    } else {
+        bfs_linalg_dense(&g, source, depth, variant);
+    }
+
+    CUDA_CHECK(cudaEventRecord(t_stop));
+    CUDA_CHECK(cudaEventSynchronize(t_stop));
+    float elapsed_ms = 0;
+    CUDA_CHECK(cudaEventElapsedTime(&elapsed_ms, t_start, t_stop));
+    printf("BFS time: %.3f ms\n", elapsed_ms);
+    CUDA_CHECK(cudaEventDestroy(t_start));
+    CUDA_CHECK(cudaEventDestroy(t_stop));
+
+    /* ---- Print results ---- */
     if (g.num_vertices <= 50) {
         printf("BFS depths from source %d:\n", source);
         for (int i = 0; i < g.num_vertices; i++) {
@@ -220,9 +444,13 @@ int main(int argc, char *argv[]) {
                source, reachable, g.num_vertices, max_depth);
     }
 
-    /* Write depths to stdout-compatible format for validation */
-    /* Usage: ./bfs_linalg graph.edgelist 0 > output.txt
-     *        python3 validate_bfs.py graph.edgelist 0 output.txt */
+    /* ---- Dump raw depths for validation ---- */
+    if (dump) {
+        printf("--- DEPTHS ---\n");
+        for (int i = 0; i < g.num_vertices; i++) {
+            printf("%d\n", depth[i]);
+        }
+    }
 
     free(depth);
     free_graph(&g);
