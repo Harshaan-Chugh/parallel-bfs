@@ -44,16 +44,15 @@ print shop should select **"actual size / no scaling"** when printing.
 ## What's Included
 
 The poster is set up as a checkpoint poster for the completed single-GPU
-implementation and the Perlmutter benchmark workflow.
+implementation and the measured Perlmutter benchmark results.
 
 | Section | Status |
 |---|---|
 | Introduction (motivation, paradigms, research questions, contributions) | done |
 | Common experimental setup + test-graph table | done |
 | Linear-algebraic methods (5 kernel variants + fused snippet) | done |
-| Linear-algebraic results table (A100 numbers from `linear-algebraic/README.md`) | done |
+| Results table (best SpMV variant vs. graph-first, from `results/summary_20260428_042111.csv`) | done |
 | Graph-first methods (top-down/bottom-up + alpha/beta heuristic + flow diagram) | done |
-| Graph-first benchmark workflow (Block 8, right side) | done |
 | Further-study column (multi-GPU, real-world graphs, GraphBLAS extensions, energy) | done |
 | References | done |
 | Repository URL | done |
@@ -61,10 +60,9 @@ implementation and the Perlmutter benchmark workflow.
 
 ## Editing checklist before printing
 
-1. Run the Perlmutter benchmark script from the repo root:
-   `sbatch -A <your_nersc_account> scripts/perlmutter_bench.slurm`.
-2. Use the CSV under `results/` to update the graph-first result panel if you
-   want final measured numbers on the poster instead of the workflow summary.
+1. Re-run the benchmark only if code or inputs change:
+   `python3 scripts/benchmark.py --repeats 10 --groups medium large`.
+2. Update block **8. Results** from `results/summary_20260428_042111.csv`.
 3. Re-run `make` and proof-read at 100% zoom in your PDF viewer.
 
 ## Dependencies

@@ -307,69 +307,39 @@
 
 % --- Results sub-section (full width within methods) -----------------
 \block{8.\ Results}{
-    \begin{minipage}[t]{0.59\linewidth}
-        \textbf{Linear-Algebraic SpMV BFS}
-        \textcolor{donegreen}{(implemented)}.\
-        Kernel-only runtime (ms) on a single A100, median of $N{=}10$
-        runs.\ \emph{Bold} = best per row.
+    \textbf{Median of $N{=}10$ runs on one Perlmutter A100.}
+    The table compares the fastest linear-algebraic SpMV variant for
+    each graph against the graph-first direction-optimizing traversal.
 
-        \vspace{0.2em}
-        \begin{center}
-        \scriptsize
-        \begin{tabular}{@{}l rrr | rrrrr@{}}
-            \toprule
-            \multirow{2}{*}{\textbf{Graph}} &
-            \textbf{Avg.}  & \textbf{$|V|$} & \textbf{Dep} &
-            \multicolumn{5}{c}{\textbf{Runtime (ms)}} \\
-            & \textbf{deg} & & &
-            Base & Warp & Bmap & PP & W+B \\
-            \midrule
-            \texttt{m\_chain}     & 2   & 1K   & 999 & 20.19 & 21.57 & \textbf{19.02} & 32.11 & 23.95 \\
-            \texttt{m\_dense}     & 100 & 1K   & 2   & 5.30  & 7.02  & 0.58           & 0.65  & \textbf{0.57} \\
-            \texttt{m\_sparse}    & 6   & 1K   & 6   & 2.47  & \textbf{0.61} & 0.63   & 0.79  & 0.69 \\
-            \midrule
-            \texttt{l\_dense}     & 100 & 100K & 4   & 4.76  & 14.00 & 4.44           & 4.67  & \textbf{4.41} \\
-            \texttt{l\_powerlaw}  & 40  & 100K & 3   & 2.81  & 2.56  & 2.46           & 4.38  & \textbf{2.41} \\
-            \texttt{l\_sparse}    & 10  & 100K & 7   & 11.34 & 1.79  & 18.15          & 1.79  & \textbf{1.58} \\
-            \bottomrule
-        \end{tabular}
-        \end{center}
+    \vspace{0.2em}
+    \begin{center}
+    \scriptsize
+    \begin{tabular}{@{}l r r r l r r r c@{}}
+        \toprule
+        \textbf{Graph} & \textbf{$|V|$} & \textbf{Avg.} & \textbf{Dep} &
+        \textbf{Best SpMV} & \textbf{SpMV} & \textbf{Graph} &
+        \textbf{GF/SpMV} & \textbf{TD/BU} \\
+        & & \textbf{deg} & & \textbf{variant} &
+        \textbf{ms} & \textbf{ms} & & \\
+        \midrule
+        \texttt{medium\_chain}    & 1K   & 2   & 999 & bitmap      & 18.733 & 32.918 & 1.76$\times$ & 1000/0 \\
+        \texttt{medium\_dense}    & 1K   & 100 & 2   & warpbitmap  & 0.557  & 0.697  & 1.25$\times$ & 1/2 \\
+        \texttt{medium\_sparse}   & 1K   & 6   & 6   & warp        & 0.665  & 0.758  & 1.14$\times$ & 4/3 \\
+        \midrule
+        \texttt{large\_dense}     & 100K & 100 & 4   & bitmap      & 4.438  & 5.085  & 1.15$\times$ & 3/2 \\
+        \texttt{large\_powerlaw}  & 100K & 40  & 3   & warpbitmap  & 2.325  & 6.264  & 2.69$\times$ & 2/2 \\
+        \texttt{large\_sparse}    & 100K & 10  & 7   & bitmap      & 1.446  & 1.927  & 1.33$\times$ & 5/3 \\
+        \bottomrule
+    \end{tabular}
+    \end{center}
 
-        \vspace{0.1em}
-        \textbf{Take-aways:}\ \textbf{Warp+Bitmap} wins on 5/6 inputs;
-        \textbf{Bitmap} alone $\succ$ dense; \textbf{Warp} alone
-        $\succ$ sparse; \texttt{chain} is pathological (999 sequential
-        launches).
-    \end{minipage}\hfill
-    \begin{minipage}[t]{0.38\linewidth}
-        \textbf{Graph-First Direction-Optimizing BFS}
-        \textcolor{donegreen}{(implemented)}.
-
-        \vspace{0.3em}
-        \begin{center}
-        \scriptsize
-        \begin{tabular}{@{}ll@{}}
-            \toprule
-            \textbf{Measured field} & \textbf{Emitted by binary / CSV} \\
-            \midrule
-            Runtime & \texttt{BFS time} (CUDA events) \\
-            Traversal mix & top-down and bottom-up launches \\
-            Correctness & raw \texttt{--dump} depths vs.\ Python BFS \\
-            Throughput & GTEPS in \texttt{results/*.csv} \\
-            Switch tuning & \texttt{--alpha}, \texttt{--beta} flags \\
-            \bottomrule
-        \end{tabular}
-        \end{center}
-
-        \vspace{0.2em}
-        \textbf{Benchmark workflow.}\ The same Perlmutter run collects
-        graph-first and all five SpMV variants:
-        \begin{center}
-        {\scriptsize\texttt{python3 scripts/benchmark.py --repeats 10 --groups medium large}}
-        \end{center}
-        The resulting CSV supports a direct median-runtime and GTEPS
-        comparison against the best SpMV kernel for each graph.
-    \end{minipage}
+    \vspace{0.1em}
+    \textbf{Take-aways:} the best SpMV variant wins on all six inputs
+    in this implementation. Graph-first stays within 1.14--1.33$\times$
+    on sparse/dense random graphs, but the power-law graph exposes
+    higher graph-first overhead from queue construction and atomic
+    frontier updates. The chain graph remains pathological for both
+    paradigms because it forces 999 sequential BFS levels.
 }
 
 % =============================================================================
