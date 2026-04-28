@@ -9,7 +9,7 @@
 #   ./run.sh test-large     Run on large graphs
 #   ./run.sh test-all       Run on everything
 #   ./run.sh validate       Run + validate against reference BFS
-#   ./run.sh bench          Benchmark both approaches on large graphs
+#   ./run.sh bench          Benchmark both approaches on medium + large graphs
 # ============================================================
 
 set -e
@@ -49,10 +49,14 @@ run_and_validate() {
     tmpfile=$(mktemp "$BUILD_DIR/bfs_output_XXXXXX.txt")
 
     echo "  [$name] $(basename "$graph") (source=$src)"
-    "$binary" "$graph" "$src" > "$tmpfile"
+    "$binary" "$graph" "$src" --dump > "$tmpfile"
 
-    # Extract depth lines for validation (lines matching "vertex N: depth D")
-    grep "vertex" "$tmpfile" | awk '{print $NF}' > "${tmpfile}.depths"
+    # Extract raw dump first; fall back to tiny-graph pretty output.
+    awk '/^--- DEPTHS ---/{flag=1; next} flag && /^-?[0-9]+$/{print}' \
+        "$tmpfile" > "${tmpfile}.depths"
+    if [ ! -s "${tmpfile}.depths" ]; then
+        grep "vertex" "$tmpfile" | awk '{print $NF}' > "${tmpfile}.depths"
+    fi
 
     if [ -s "${tmpfile}.depths" ]; then
         python3 "$VALIDATE" "$graph" "$src" "${tmpfile}.depths" 2>&1 | sed 's/^/    /'
@@ -141,21 +145,26 @@ cmd_validate() {
 }
 
 cmd_bench() {
-    echo "=== Benchmarking on large graphs ==="
-    echo "(Add CUDA event timing to the implementations for proper benchmarks)"
+    echo "=== Benchmarking on medium + large graphs ==="
+    echo "(CUDA event timing; graph loading and printing are excluded)"
     echo ""
-    for graph in "$TEST_DIR"/large_*.edgelist; do
+    for graph in "$TEST_DIR"/medium_*.edgelist "$TEST_DIR"/large_*.edgelist; do
         echo "--- $(basename "$graph") ---"
-        for binary_info in "$LINALG:linalg" "$GRAPHFIRST:graphfirst"; do
-            binary="${binary_info%%:*}"
-            name="${binary_info##*:}"
-            if [ -x "$binary" ]; then
-                echo "  [$name]"
-                time "$binary" "$graph" 0 2>&1 | sed 's/^/    /'
-            fi
-        done
-        echo ""
+
+        if [ -x "$LINALG" ]; then
+            for variant in baseline warp bitmap pushpull warpbitmap; do
+                echo "  [linalg:$variant]"
+                "$LINALG" "$graph" 0 "$variant" 2>&1 | sed 's/^/    /'
+            done
+        fi
+
+        if [ -x "$GRAPHFIRST" ]; then
+            echo "  [graphfirst]"
+            "$GRAPHFIRST" "$graph" 0 2>&1 | sed 's/^/    /'
+        fi
+
     done
+    echo ""
 }
 
 # ---- Main ----

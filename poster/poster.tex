@@ -8,9 +8,8 @@
 %  Build  : pdflatex poster.tex   (run twice for cross-references)
 %           or simply `make` -- see the included Makefile.
 %
-%  Sections marked [TODO] are placeholders for work in progress.
-%  The graph-first kernels and graph-first results figure are the
-%  primary [TODO] items; the linear-algebraic side is complete.
+%  The poster emphasizes the completed single-GPU implementation and the
+%  Perlmutter benchmark workflow used to collect final timing tables.
 % =============================================================================
 
 \documentclass[
@@ -71,14 +70,9 @@
 % -----------------------------------------------------------------------------
 %  Custom helpers
 % -----------------------------------------------------------------------------
-\definecolor{todored}{HTML}{C0392B}
 \definecolor{donegreen}{HTML}{1E8449}
 \definecolor{accentblue}{HTML}{1F4E79}
 \definecolor{softgray}{HTML}{F4F6F8}
-
-\newcommand{\TODO}[1]{%
-    \textcolor{todored}{\textbf{[TODO]}}\ \textcolor{todored}{#1}%
-}
 
 \newcommand{\DONE}[1]{%
     \textcolor{donegreen}{\textbf{[DONE]}}\ #1%
@@ -112,8 +106,8 @@
 % -----------------------------------------------------------------------------
 \title{GPU-Accelerated Parallel BFS:
        Linear-Algebraic vs.\ Graph-First on a Single A100}
-\author{Author Name \quad\textbar\quad Advisor: Prof.\ Advisor Name}
-\institute{Department / Lab Affiliation \quad\textbullet\quad NERSC Perlmutter (NVIDIA A100)}
+\author{Aakaash Nattanmai \quad\textbar\quad Harshaan Chugh}
+\institute{CS 5220: Advanced Applications of Parallel Computers \quad\textbullet\quad Cornell University \quad\textbullet\quad NERSC Perlmutter (NVIDIA A100)}
 
 % =============================================================================
 \begin{document}
@@ -184,7 +178,7 @@
         \item Five SpMV-BFS kernel variants, including a fused
               warp-cooperative + bitmap kernel.
         \item Direction-optimizing graph-first BFS using Beamer's
-              $\alpha/\beta$ heuristic. \TODO{Kernels in progress.}
+              $\alpha/\beta$ heuristic.
         \item Apples-to-apples benchmark on a shared CSR loader,
               identical inputs, single A100.
         \item Open-source implementation; reproducible \texttt{run.sh}
@@ -271,7 +265,7 @@
 % ============== RIGHT SUB-COLUMN ===============
 \subcolumn{0.5}
 
-\block{7.\ Graph-First Direction-Opt.\ BFS \textcolor{todored}{(in progress)}}{
+\block{7.\ Graph-First Direction-Opt.\ BFS \textcolor{donegreen}{(implemented)}}{
     Beamer's direction-optimizing BFS~\cite{beamer2012}:
     a per-level decision between two kernels.
     \vspace{0.3em}
@@ -296,49 +290,17 @@
         (\alpha = 14)
     \]
     and back to top-down when $|f_k| < |V|/\beta$ with $\beta = 24$.
-    \vspace{0.4em}
-
-    \textbf{Status.}
+    \vspace{0.3em}
+    \textbf{Implementation.}\ The GPU driver keeps each frontier as both
+    a compact queue and a bitmap. Both push and pull kernels produce the
+    next queue, next bitmap, next frontier size, and next frontier edge
+    count entirely on device; the host copies only those two counters for
+    the next direction decision.
     \begin{itemize}\setlength\itemsep{1pt}
-        \item \DONE{Host driver, CSR upload, CPU placeholder.}
-        \item \TODO{Top-down kernel (\texttt{atomicCAS}-based push).}
-        \item \TODO{Bottom-up kernel (bitmap pull, early-exit).}
-        \item \TODO{Queue $\leftrightarrow$ bitmap conversion at switch.}
-        \item \TODO{CUDA-event timing matching the SpMV path.}
+        \item \DONE{CUDA-event timing matches the SpMV path.}
+        \item \DONE{\texttt{--dump} emits raw depths for validation.}
+        \item \DONE{\texttt{--alpha}/\texttt{--beta} expose switch tuning.}
     \end{itemize}
-
-    \vspace{0.4em}
-    \begin{center}
-    \begin{tikzpicture}[
-        node distance=8mm and 12mm,
-        every node/.style={font=\small},
-        kernel/.style={rectangle, rounded corners, draw=accentblue,
-                       fill=softgray, thick, minimum width=42mm,
-                       minimum height=12mm, align=center},
-        decision/.style={diamond, draw=accentblue, fill=white, thick,
-                         aspect=2, align=center, inner sep=1pt},
-        arr/.style={-{Latex[length=2mm]}, thick, accentblue},
-    ]
-        \node[kernel] (init) {Init: $f_0 = \{s\}$};
-        \node[decision, below=of init] (sw) {$m_f > |E|/\alpha$?};
-        \node[kernel, below left=of sw, xshift=-2mm] (td)
-              {Top-down\\(push)};
-        \node[kernel, below right=of sw, xshift=2mm] (bu)
-              {Bottom-up\\(pull)};
-        \node[decision, below=14mm of sw, yshift=-12mm] (done)
-              {$f_{k+1} = \emptyset$?};
-        \node[kernel, below=of done] (out) {Output depths};
-        \draw[arr] (init) -- (sw);
-        \draw[arr] (sw) -- node[above left, font=\scriptsize]{no} (td);
-        \draw[arr] (sw) -- node[above right,font=\scriptsize]{yes} (bu);
-        \draw[arr] (td) |- (done);
-        \draw[arr] (bu) |- (done);
-        \draw[arr] (done.west) .. controls +(-4,0) and +(-4,0) ..
-              node[left, font=\scriptsize]{no, $k{+}{+}$} (sw.west);
-        \draw[arr] (done) -- node[right,font=\scriptsize]{yes} (out);
-    \end{tikzpicture}
-    \end{center}
-    {\footnotesize \textit{Per-level direction switch driven by frontier mass.}}
 }
 
 \end{subcolumns}
@@ -381,32 +343,32 @@
     \end{minipage}\hfill
     \begin{minipage}[t]{0.38\linewidth}
         \textbf{Graph-First Direction-Optimizing BFS}
-        \textcolor{todored}{(in progress)}. \TODO{Results pending.}
+        \textcolor{donegreen}{(implemented)}.
 
         \vspace{0.3em}
-        \fbox{%
-            \begin{minipage}{0.94\linewidth}
-                \vspace{3pt}
-                \centering
-                \footnotesize
-                \textcolor{todored}{\textbf{[Placeholder:\\
-                graph-first results figure]}}\\[3pt]
-                \raggedright
-                \textit{Once the top-down / bottom-up kernels and the
-                $\alpha,\beta$ switch are implemented, this panel will
-                show:}
-                \begin{itemize}\setlength\itemsep{1pt}
-                    \item Runtime bar chart (graph-first vs.\ best
-                          SpMV variant).
-                    \item Frontier-size trace w/
-                          push$\leftrightarrow$pull switch points.
-                    \item GTEPS summary.
-                    \item Sensitivity sweep over
-                          $\alpha\in[8,32]$, $\beta\in[8,48]$.
-                \end{itemize}
-                \vspace{2pt}
-            \end{minipage}%
-        }
+        \begin{center}
+        \scriptsize
+        \begin{tabular}{@{}ll@{}}
+            \toprule
+            \textbf{Measured field} & \textbf{Emitted by binary / CSV} \\
+            \midrule
+            Runtime & \texttt{BFS time} (CUDA events) \\
+            Traversal mix & top-down and bottom-up launches \\
+            Correctness & raw \texttt{--dump} depths vs.\ Python BFS \\
+            Throughput & GTEPS in \texttt{results/*.csv} \\
+            Switch tuning & \texttt{--alpha}, \texttt{--beta} flags \\
+            \bottomrule
+        \end{tabular}
+        \end{center}
+
+        \vspace{0.2em}
+        \textbf{Benchmark workflow.}\ The same Perlmutter run collects
+        graph-first and all five SpMV variants:
+        \begin{center}
+        {\scriptsize\texttt{python3 scripts/benchmark.py --repeats 10 --groups medium large}}
+        \end{center}
+        The resulting CSV supports a direct median-runtime and GTEPS
+        comparison against the best SpMV kernel for each graph.
     \end{minipage}
 }
 
@@ -457,7 +419,7 @@
 }
 
 \block{12.\ Energy Profiling}{
-    Runtime is only one axis. \TODO{Capture energy/edge using NVML}:
+    Runtime is only one axis. A natural follow-up is energy/edge using NVML:
     \begin{itemize}\setlength\itemsep{2pt}
         \item Bracket each BFS with
               \texttt{nvmlDevice\-GetTotalEnergy\-Consumption}
@@ -490,7 +452,7 @@
     \vspace{0.2em}
     \textit{Computations on NERSC \emph{Perlmutter} (NVIDIA A100,
     \texttt{sm\_80}).\ Source, build scripts, validation harness:}
-    \TODO{repo URL / DOI / QR code.}
+    \texttt{github.com/Harshaan-Chugh/parallel-bfs}.
 }
 
 \end{columns}

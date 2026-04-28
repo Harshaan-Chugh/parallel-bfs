@@ -13,7 +13,7 @@ echo "SpMV BFS - Testing all kernel variants"
 echo "============================================="
 
 # ---- Tiny graphs (correctness check) ----
-for variant in baseline warp bitmap; do
+for variant in baseline warp bitmap pushpull warpbitmap; do
     echo ""
     echo "===== Variant: $variant ====="
     echo ""

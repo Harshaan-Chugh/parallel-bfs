@@ -41,11 +41,10 @@ pdflatex poster.tex      # second pass for cross-refs
 The PDF is rendered at the true physical dimensions (42 in × 30 in), so the
 print shop should select **"actual size / no scaling"** when printing.
 
-## What's complete vs `[TODO]`
+## What's Included
 
-The poster is intentionally finished where the project is finished, and clearly
-flagged where it isn't. Search for `\TODO{...}` in `poster.tex` to find every
-placeholder.
+The poster is set up as a checkpoint poster for the completed single-GPU
+implementation and the Perlmutter benchmark workflow.
 
 | Section | Status |
 |---|---|
@@ -53,21 +52,20 @@ placeholder.
 | Common experimental setup + test-graph table | done |
 | Linear-algebraic methods (5 kernel variants + fused snippet) | done |
 | Linear-algebraic results table (A100 numbers from `linear-algebraic/README.md`) | done |
-| Graph-first methods (top-down/bottom-up + α/β heuristic + flow diagram) | done; kernels themselves marked `[TODO]` |
-| **Graph-first results panel (Block 8, right side)** | **`[TODO]` placeholder** — drop the figure in once kernels are implemented |
+| Graph-first methods (top-down/bottom-up + alpha/beta heuristic + flow diagram) | done |
+| Graph-first benchmark workflow (Block 8, right side) | done |
 | Further-study column (multi-GPU, real-world graphs, GraphBLAS extensions, energy) | done |
 | References | done |
-| Repository URL / DOI / QR code | `[TODO]` — fill in before printing |
-| Author, advisor, affiliation strings | placeholder — edit `\author{}` / `\institute{}` in `poster.tex` |
+| Repository URL | done |
+| Author and affiliation strings | done |
 
 ## Editing checklist before printing
 
-1. Replace `Author Name`, `Advisor Name`, and the affiliation in
-   `\author{}` and `\institute{}`.
-2. Drop a real graph-first results figure into block **8. Results**
-   (replace the framed `[TODO]` placeholder).
-3. Fill in the repository URL / QR code in block **15.\ Acknowledgments**.
-4. Re-run `make` and proof-read at 100% zoom in your PDF viewer.
+1. Run the Perlmutter benchmark script from the repo root:
+   `sbatch -A <your_nersc_account> scripts/perlmutter_bench.slurm`.
+2. Use the CSV under `results/` to update the graph-first result panel if you
+   want final measured numbers on the poster instead of the workflow summary.
+3. Re-run `make` and proof-read at 100% zoom in your PDF viewer.
 
 ## Dependencies
 
