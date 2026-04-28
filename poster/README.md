@@ -6,13 +6,16 @@ and **graph-first direction-optimizing BFS** on a single NVIDIA A100.
 ## Format
 
 - **Stock:** Matte
-- **Dimensions:** **42 in (W) × 36 in (H)** — landscape (the standard
-  large-format research-poster size for "42-inch wide" boards)
+- **Dimensions:** **40 in (W) × 30 in (H)** — landscape (horizontal;
+  matches common 30×40 poster boards oriented wide-side horizontal)
 - **Layout (column widths):**
   - **25%** Introduction (left)
   - **50%** Methods + Results (middle, with two sub-columns)
   - **25%** Further Study + References (right)
-- **Body font:** 17pt (set in `\documentclass[..., 17pt]{tikzposter}`)
+- **Body font:** 20pt (set in `\documentclass[..., 20pt]{tikzposter}`)
+- **Page & blocks:** White page background; section headers use the palette
+  blue so each block stays visible. **Side and bottom clearance ~0.14 in**
+  (maximally wide boxes); top ~0.26 in for the header.
 - **Engine:** `pdflatex` (also works under `lualatex` / `xelatex`)
 - **Class:** [`tikzposter`](https://ctan.org/pkg/tikzposter) v2.x
 
@@ -38,7 +41,7 @@ pdflatex poster.tex
 pdflatex poster.tex      # second pass for cross-refs
 ```
 
-The PDF is rendered at the true physical dimensions (42 in × 30 in), so the
+The PDF is rendered at the true physical dimensions (40 in × 30 in), so the
 print shop should select **"actual size / no scaling"** when printing.
 
 ## What's Included
@@ -48,12 +51,12 @@ implementation and the measured Perlmutter benchmark results.
 
 | Section | Status |
 |---|---|
-| Introduction (motivation, paradigms, research questions, contributions) | done |
+| Introduction (motivation, paradigms, research questions, warp code example) | done |
 | Common experimental setup + test-graph table | done |
-| Linear-algebraic methods (5 kernel variants + fused snippet) | done |
+| Linear-algebraic methods (4 kernels in block 6; warp snippet in block 4) | done |
 | Results table (best SpMV variant vs. graph-first, from `results/summary_20260428_042111.csv`) | done |
 | Graph-first methods (top-down/bottom-up + alpha/beta heuristic + flow diagram) | done |
-| Further-study column (multi-GPU, real-world graphs, GraphBLAS extensions, energy) | done |
+| Further-study column (multi-GPU, real-world graphs, GraphBLAS extensions) | done |
 | References | done |
 | Repository URL | done |
 | Author and affiliation strings | done |

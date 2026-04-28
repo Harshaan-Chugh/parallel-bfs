@@ -1,7 +1,7 @@
 % =============================================================================
 %  Parallel BFS Poster: Linear Algebraic vs Graph-First on a Single GPU
 %
-%  Format : Matte stock, 42 in (W) x 36 in (H), landscape.
+%  Format : Matte stock, 40 in (W) x 30 in (H), landscape.
 %  Layout : 25% Introduction | 50% Methods + Results | 25% Further Study
 %  Engine : pdflatex (also lualatex / xelatex), tikzposter v2.x
 %
@@ -14,19 +14,18 @@
 
 \documentclass[
     a0paper,
-    margin=1in,
-    innermargin=12mm,
-    blockverticalspace=6mm,
-    colspace=10mm,
-    subcolspace=6mm,
-    17pt,
+    margin=0.14in,
+    innermargin=5mm,
+    blockverticalspace=3mm,
+    colspace=3mm,
+    subcolspace=2mm,
+    20pt,
 ]{tikzposter}
 
-% --- Override page size to "Matte 42-inch wide" landscape (42 in x 36 in).
-%     tikzposter v2.0 only accepts a0/a1/a2; we resize via geometry directly.
-%     42x36 is the standard size for academic conferences.
-\geometry{paperwidth=42in, paperheight=36in,
-          left=1in, right=1in, top=1in, bottom=1in}
+% --- Full-bleed style margins: maximal text width; bottom kept minimal but
+%     not zero (trims on some print workflows start ~1/8 in from edge).
+\geometry{paperwidth=40in, paperheight=30in,
+          left=0.14in, right=0.14in, top=0.26in, bottom=0.14in}
 
 \usepackage[utf8]{inputenc}
 \usepackage[T1]{fontenc}
@@ -38,6 +37,7 @@
 \usepackage{xcolor}
 \usepackage{listings}
 \usepackage{graphicx}
+\usepackage{adjustbox}
 \usepackage{tikz}
 \usetikzlibrary{positioning, arrows.meta, shapes.geometric, fit, backgrounds}
 
@@ -46,9 +46,18 @@
 % -----------------------------------------------------------------------------
 \usetheme{Simple}
 \usecolorstyle[colorPalette=BlueGrayOrange]{Germany}
+% Germany + BlueGrayOrange use light gray (palette colorTwo) as the page
+% fill. Switch to white for printing; use colored block headers so boxes
+% stay visible on white.
+\colorlet{backgroundcolor}{white}
+\colorlet{titlefgcolor}{colorOne}
+\colorlet{blocktitlebgcolor}{colorOne}
+\colorlet{blocktitlefgcolor}{white}
+\colorlet{blockbodybgcolor}{white}
+
 \usebackgroundstyle{Default}
 \usetitlestyle{Empty}
-\useblockstyle{Default}
+\useblockstyle[bodyinnersep=5.5mm, titleinnersep=5mm, linewidth=0.2cm]{Default}
 \useinnerblockstyle{Default}
 \usenotestyle{Corner}
 
@@ -57,11 +66,11 @@
 \settitle{%
     \centering
     \vbox{%
-        \vskip0.3em
+        \vskip0.15em
         {\color{titlefgcolor}\bfseries\Huge \@title \par}%
-        \vskip0.6em
+        \vskip0.35em
         {\color{titlefgcolor}\Large \@author \par}%
-        \vskip0.3em
+        \vskip0.2em
         {\color{titlefgcolor}\large \@institute \par}%
     }%
 }
@@ -73,14 +82,14 @@
 \definecolor{donegreen}{HTML}{1E8449}
 \definecolor{accentblue}{HTML}{1F4E79}
 \definecolor{softgray}{HTML}{F4F6F8}
+\definecolor{todored}{HTML}{C0392B}
 
-\newcommand{\DONE}[1]{%
-    \textcolor{donegreen}{\textbf{[DONE]}}\ #1%
-}
+\newcommand{\tabtodo}{\textcolor{todored}{TODO}}
+\newsavebox{\bfsfiveleft}
 
 % Code-block style for short kernel snippets (compact for poster).
 \lstdefinestyle{cuda}{
-    basicstyle=\ttfamily\footnotesize,
+    basicstyle=\ttfamily\small,
     keywordstyle=\color{accentblue}\bfseries,
     commentstyle=\color{gray}\itshape,
     stringstyle=\color{donegreen},
@@ -101,18 +110,41 @@
     belowskip=2pt,
 }
 
+% Smaller type for the narrow left-column code box (block 4).
+\lstdefinestyle{cudatight}{
+    basicstyle=\ttfamily\scriptsize,
+    keywordstyle=\color{accentblue}\bfseries,
+    commentstyle=\color{gray}\itshape,
+    stringstyle=\color{donegreen},
+    language=C++,
+    morekeywords={__global__,__device__,__shared__,atomicOr,atomicCAS,__ballot_sync,uint32_t},
+    showstringspaces=false,
+    columns=fullflexible,
+    keepspaces=true,
+    breaklines=true,
+    frame=single,
+    framerule=0.3pt,
+    framesep=2pt,
+    rulecolor=\color{gray!50},
+    backgroundcolor=\color{softgray},
+    xleftmargin=2pt,
+    xrightmargin=2pt,
+    aboveskip=2pt,
+    belowskip=2pt,
+}
+
 % -----------------------------------------------------------------------------
 %  Title block
 % -----------------------------------------------------------------------------
 \title{GPU-Accelerated Parallel BFS:
        Linear-Algebraic vs.\ Graph-First on a Single A100}
 \author{Aakaash Nattanmai \quad\textbar\quad Harshaan Chugh}
-\institute{CS 5220: Advanced Applications of Parallel Computers \quad\textbullet\quad Cornell University \quad\textbullet\quad NERSC Perlmutter (NVIDIA A100)}
+\institute{CS 5220: Applied High-Performance and Parallel Computing \quad\textbullet\quad Cornell University \quad\textbullet\quad NERSC Perlmutter (NVIDIA A100)}
 
 % =============================================================================
 \begin{document}
-\maketitle[width=0.95\textwidth, titletotopverticalspace=4mm,
-          titletoblockverticalspace=8mm]
+\maketitle[width=\textwidth, titletotopverticalspace=1mm,
+          titletoblockverticalspace=3mm]
 
 \begin{columns}
 
@@ -173,17 +205,12 @@
     \end{enumerate}
 }
 
-\block{4.\ Contributions}{
-    \begin{itemize}\setlength\itemsep{2pt}
-        \item Five SpMV-BFS kernel variants, including a fused
-              warp-cooperative + bitmap kernel.
-        \item Direction-optimizing graph-first BFS using Beamer's
-              $\alpha/\beta$ heuristic.
-        \item Apples-to-apples benchmark on a shared CSR loader,
-              identical inputs, single A100.
-        \item Open-source implementation; reproducible \texttt{run.sh}
-              workflow.
-    \end{itemize}
+\block{4.\ Example: Warp-Cooperative Pull}{
+    {\small From \texttt{spmv\_bfs\_warp}: one \emph{warp} (32 threads) scans
+    one vertex's neighbors in parallel, votes with \texttt{\_\_ballot\_sync},
+    and a single thread writes if any neighbor was on the frontier.}
+    \vspace{0.2em}
+    \lstinputlisting[style=cudatight]{snippets/warp_coop.cu}
 }
 
 % =============================================================================
@@ -191,44 +218,62 @@
 % =============================================================================
 \column{0.50}
 
-\block{5.\ Common Experimental Setup}{
-    \begin{minipage}[t]{0.55\linewidth}
-        \textbf{Storage.}\ Compressed Sparse Row (CSR):
-        \texttt{row\_ptr[V+1]}, \texttt{col\_idx[2E]}.
-        Edges are loaded once on the host, undirected (each edge inserted
-        in both directions), then transferred to GPU global memory.
-        \vspace{0.3em}
+\block{5.\ Experimental Setup}{%
+    \sbox{\bfsfiveleft}{%
+        \begin{minipage}[t]{0.52\linewidth}
+            \textbf{Storage.}\ Compressed Sparse Row (CSR):
+            \texttt{row\_ptr[V+1]}, \texttt{col\_idx[2E]}.
+            Edges are loaded once on the host, undirected (each edge inserted
+            in both directions), then transferred to GPU global memory.
+            \vspace{0.15em}
 
-        \textbf{Hardware.}\ Single NVIDIA A100 (40GB) on
-        NERSC \emph{Perlmutter}.\ Compute capability~\texttt{sm\_80};
-        compiler \texttt{nvcc -O2}.\ Restricted to
-        \texttt{CUDA\_VISIBLE\_DEVICES=0} for fair single-GPU comparison.
-        \vspace{0.3em}
+            \textbf{Hardware.}\ Single NVIDIA A100 (40GB) on
+            NERSC \emph{Perlmutter}.\ Compute capability~\texttt{sm\_80};
+            compiler \texttt{nvcc -O2}.\ Restricted to
+            \texttt{CUDA\_VISIBLE\_DEVICES=0} for fair single-GPU comparison.
+            \vspace{0.15em}
 
-        \textbf{Validation.}\ Every variant is checked level-by-level
-        against a reference Python BFS (\texttt{validate\_bfs.py}).
-        Only kernel time is measured (CUDA events); graph load and I/O
-        are excluded.
+            \textbf{Validation.}\ Every variant is checked level-by-level
+            against a reference Python BFS (\texttt{validate\_bfs.py}).
+            Only kernel time is measured (CUDA events); graph load and I/O
+            are excluded.
+        \end{minipage}%
+    }%
+
+    \begin{minipage}[t]{0.52\linewidth}
+        \vspace{0pt}%
+        \usebox{\bfsfiveleft}
     \end{minipage}\hfill
-    \begin{minipage}[t]{0.42\linewidth}
-        \begin{center}
-        \footnotesize
-        \begin{tabular}{@{}lrrr@{}}
-            \toprule
-            \textbf{Graph} & \textbf{$|V|$} & \textbf{$|E|$} & \textbf{Avg.\ deg.} \\
-            \midrule
-            \texttt{medium\_chain}     & 1{,}000   & 999       & 2 \\
-            \texttt{medium\_sparse}    & 1{,}000   & 3K        & 6 \\
-            \texttt{medium\_dense}     & 1{,}000   & 50K       & 100 \\
-            \texttt{large\_sparse}     & 100{,}000 & 500K      & 10 \\
-            \texttt{large\_dense}      & 100{,}000 & 5M        & 100 \\
-            \texttt{large\_powerlaw}   & 100{,}000 & 1M        & 40 \\
-            \bottomrule
-        \end{tabular}
-        \end{center}
-        \vspace{0.2em}
-        {\small \textit{Synthetic test graphs generated by
-        \texttt{generate\_graphs.py} (RMAT for power-law).}}
+    \begin{minipage}[t][\dimexpr\ht\bfsfiveleft+\dp\bfsfiveleft\relax][c]{0.44\linewidth}
+        \centering
+    
+        \resizebox{0.72\linewidth}{!}{%
+            \begingroup
+            \setlength{\tabcolsep}{12pt}%
+            \renewcommand{\arraystretch}{1.22}%
+            \begin{tabular}{@{}l r r r@{}}
+                \toprule
+                \textbf{Graph} & $|V|$ & $|E|$ & $\bar{d}$ \\
+                \midrule
+                \texttt{m\_chain}   & 1K & 999 & 2 \\
+                \texttt{m\_sparse}  & 1K & 3K & 6 \\
+                \texttt{m\_dense}   & 1K & 50K & 100 \\
+                \texttt{l\_sparse}  & 100K & 500K & 10 \\
+                \texttt{l\_dense}   & 100K & 5M & 100 \\
+                \texttt{l\_power}   & 100K & 1M & 40 \\
+                \bottomrule
+            \end{tabular}%
+            \endgroup
+        }%
+    
+        \vspace{0.25em}
+    
+        \begin{minipage}{0.72\linewidth}
+            \centering
+            \scriptsize
+            \textit{Synthetic graphs from \texttt{generate\_graphs.py}
+            (RMAT for power-law). Exact $|E|$ in repo scripts.}
+        \end{minipage}
     \end{minipage}
 }
 
@@ -238,108 +283,95 @@
 % ============== LEFT SUB-COLUMN ===============
 \subcolumn{0.5}
 
-\block{6.\ Linear-Algebraic SpMV BFS \textcolor{donegreen}{(implemented)}}{
-    Each BFS level is a masked SpMV.\ Five kernel variants:
-    \begin{itemize}\setlength\itemsep{2pt}
-        \item \textbf{Baseline} -- one thread per row; scans neighbors,
-              writes \texttt{new\_frontier[i]=1} if any neighbor is in
-              $f_k$. Simple but per-row load-imbalanced.
-        \item \textbf{Opt 1 -- Warp-Cooperative Rows.}\ 32 lanes share
-              one row; \texttt{\_\_ballot\_sync()} reduces hit-bits in
-              one instruction. Eliminates hub-vertex stragglers.
-        \item \textbf{Opt 2 -- Bitmap Frontier.}\ Pack $f_k$ into
-              \texttt{uint32\_t} (1 bit/vertex); writes via
-              \texttt{atomicOr}. 400\,KB $\to$ 12.5\,KB at
-              $V{=}100$K -- fits in L2.
-        \item \textbf{Opt 3 -- Push-Pull (Direction-Optimizing SpMV).}\
-              Switch between row-pull and column-push per level based
-              on $|f_k|$.\ SpMV-side analogue of Beamer~et al.~\cite{beamer2012}.
-        \item \textbf{Opt 4 -- Fused Warp+Bitmap.}\ Warp-cooperative
-              scan \emph{of} a bitmap frontier -- best of both worlds.
-              Fused inner loop:
-    \end{itemize}
-    \vspace{-4pt}
-    \lstinputlisting[style=cuda]{snippets/warpbitmap.cu}
+\block{6.\ Linear-Algebraic SpMV BFS}{
+    Think of each BFS round as updating ``who is on the frontier next'' using
+    the adjacency matrix. We ship four kernel versions you can select at run
+    time:
+
+    \noindent\textbf{Baseline.}\ One thread per vertex. It walks that
+    vertex's neighbors; if any neighbor is on the frontier, it turns
+    on for the next round. Easy to understand, but one very high-degree
+    vertex can hold up its whole group of 32 threads.
+
+    \vspace{0.2em}
+    \noindent\textbf{Warp-cooperative rows.}\ Give \textbf{one vertex} to a
+    \textbf{team of 32 threads} (a warp). They \textbf{split} its
+    neighbor list: thread~0 checks neighbors \#0,\,32,\,64,\,\ldots;
+    thread~1 checks \#1,\,33,\,65\ldots; and so on. So a ``hub'' with
+    thousands of edges shares work across the team instead of one
+    thread doing the whole list while the other 31 wait.
+
+    \vspace{0.2em}
+    \noindent\textbf{Bitmap frontier.}\ Store ``on frontier'' as single bits
+    instead of full integers so we read and write less data.
+
+    \vspace{0.2em}
+    \noindent\textbf{Push--pull.}\ \emph{Push:} only frontier vertices touch
+    neighbors. \emph{Pull:} every unvisited vertex checks whether any
+    neighbor is on the frontier. Each round we estimate an
+    \textbf{edge budget} for the frontier---roughly
+    \textbf{frontier size $\times$ average degree}---and compare it to
+    \textbf{all edges in the graph}. If that budget is
+    \textbf{still below about one-fourteenth} of total edges, we
+    \textbf{push}; if it crosses above that, we \textbf{pull}. So the
+    switch is ``how edge-heavy is this frontier compared to the whole
+    graph?''---not a fixed vertex count.
 }
 
 % ============== RIGHT SUB-COLUMN ===============
 \subcolumn{0.5}
 
-\block{7.\ Graph-First Direction-Opt.\ BFS \textcolor{donegreen}{(implemented)}}{
+\block{7.\ Graph-First Direction-Opt.\ BFS}{
     Beamer's direction-optimizing BFS~\cite{beamer2012}:
     a per-level decision between two kernels.
-    \vspace{0.3em}
+    \vspace{0.12em}
 
     \textbf{Top-down (push).}\ Each thread owns one frontier vertex and
     pushes itself onto every unvisited neighbor.\ \texttt{atomicCAS} on
     \texttt{visited[]} prevents duplicate enqueues.\ Optimal when the
     frontier is small (early/late BFS levels).
-    \vspace{0.3em}
+    \vspace{0.12em}
 
     \textbf{Bottom-up (pull).}\ Each thread owns one unvisited vertex
     and stops as soon as it finds \emph{any} neighbor in the
     frontier.\ Optimal in the middle of BFS when most edges already
     point to the frontier.
-    \vspace{0.3em}
+    \vspace{0.12em}
 
-    \textbf{Switching heuristic.}\ Let $m_f$ be the sum of out-degrees
-    of frontier vertices; switch top-down $\rightarrow$ bottom-up when
-    \[
-        m_f \;>\; \frac{|E|}{\alpha},
-        \qquad
-        (\alpha = 14)
-    \]
-    and back to top-down when $|f_k| < |V|/\beta$ with $\beta = 24$.
-    \vspace{0.3em}
-    \textbf{Implementation.}\ The GPU driver keeps each frontier as both
+    \textbf{Switching heuristic.}\ With $m_f$ the sum of out-degrees of
+    frontier vertices, switch top-down $\rightarrow$ bottom-up when
+    $m_f > |E|/\alpha$ (we use $\alpha{=}14$), and back to top-down when
+    $|f_k| < |V|/\beta$ ($\beta{=}24$).
+
+    \vspace{0.28em}
+    \noindent\textbf{Implementation.}\ The GPU driver keeps each frontier as both
     a compact queue and a bitmap. Both push and pull kernels produce the
     next queue, next bitmap, next frontier size, and next frontier edge
     count entirely on device; the host copies only those two counters for
     the next direction decision.
-    \begin{itemize}\setlength\itemsep{1pt}
-        \item \DONE{CUDA-event timing matches the SpMV path.}
-        \item \DONE{\texttt{--dump} emits raw depths for validation.}
-        \item \DONE{\texttt{--alpha}/\texttt{--beta} expose switch tuning.}
-    \end{itemize}
+
+    \vspace{0.15em}
+    \noindent\textbf{Enhancement to try.}\ \emph{Two-level staging:} replicate
+    very small frontiers into \texttt{\_\_shared\_\_} bitmap slices and run
+    short vectorized loads for the pull kernel, so hub neighborhoods that
+    repeat across rounds hit L1/shared before global memory (not implemented).
 }
 
 \end{subcolumns}
 
 % --- Results sub-section (full width within methods) -----------------
-\block{8.\ Results}{
-    \textbf{Median of $N{=}10$ runs on one Perlmutter A100.}
-    The table compares the fastest linear-algebraic SpMV variant for
-    each graph against the graph-first direction-optimizing traversal.
+\block{8.\ Results (head-to-head summary)}{
+    \textbf{Median of $N{=}10$ runs} on one Perlmutter A100 (CUDA events;
+    load/print excluded).\ On every synthetic in block~\textbf{5}, the fastest
+    SpMV kernel beats graph-first in our current timings; gaps are tight on
+    sparse/dense random graphs (about $1.1\text{--}1.3\times$) and widen on
+    power-law and chain stress cases.
 
     \vspace{0.2em}
-    \begin{center}
-    \scriptsize
-    \begin{tabular}{@{}l r r r l r r r c@{}}
-        \toprule
-        \textbf{Graph} & \textbf{$|V|$} & \textbf{Avg.} & \textbf{Dep} &
-        \textbf{Best SpMV} & \textbf{SpMV} & \textbf{Graph} &
-        \textbf{GF/SpMV} & \textbf{TD/BU} \\
-        & & \textbf{deg} & & \textbf{variant} &
-        \textbf{ms} & \textbf{ms} & & \\
-        \midrule
-        \texttt{medium\_chain}    & 1K   & 2   & 999 & bitmap      & 18.733 & 32.918 & 1.76$\times$ & 1000/0 \\
-        \texttt{medium\_dense}    & 1K   & 100 & 2   & warpbitmap  & 0.557  & 0.697  & 1.25$\times$ & 1/2 \\
-        \texttt{medium\_sparse}   & 1K   & 6   & 6   & warp        & 0.665  & 0.758  & 1.14$\times$ & 4/3 \\
-        \midrule
-        \texttt{large\_dense}     & 100K & 100 & 4   & bitmap      & 4.438  & 5.085  & 1.15$\times$ & 3/2 \\
-        \texttt{large\_powerlaw}  & 100K & 40  & 3   & warpbitmap  & 2.325  & 6.264  & 2.69$\times$ & 2/2 \\
-        \texttt{large\_sparse}    & 100K & 10  & 7   & bitmap      & 1.446  & 1.927  & 1.33$\times$ & 5/3 \\
-        \bottomrule
-    \end{tabular}
-    \end{center}
-
-    \vspace{0.1em}
-    \textbf{Take-aways:} the best SpMV variant wins on all six inputs
-    in this implementation. Graph-first stays within 1.14--1.33$\times$
-    on sparse/dense random graphs, but the power-law graph exposes
-    higher graph-first overhead from queue construction and atomic
-    frontier updates. The chain graph remains pathological for both
-    paradigms because it forces 999 sequential BFS levels.
+    \textbf{Per-kernel SpMV sweep} (all variants in ms) is tabulated in
+    \textbf{10} together with a \textbf{graph-first timing grid} placeholder---no
+    per-variant README table yet for graph-first, so those cells are marked
+    \tabtodo{} until we freeze a comparable breakout.
 }
 
 % =============================================================================
@@ -347,59 +379,81 @@
 % =============================================================================
 \column{0.25}
 
-\block{9.\ Multi-GPU Scaling}{
-    Today: a single A100. Natural next steps:
-    \begin{itemize}\setlength\itemsep{2pt}
-        \item 1D vertex partitioning of CSR across Perlmutter's 4-GPU
-              nodes and beyond.
-        \item Boundary-frontier exchange via NCCL all-to-all (or MPI).
-        \item Strong / weak scaling on Graph500-class RMAT
-              ($V{=}2^{26},\,E{=}2^{30}$).
-        \item Comm.\ / compute overlap with CUDA streams.
+\block{9.\ Further research}{
+    \raggedright
+    \begin{itemize}\setlength\itemsep{8pt}
+        \item \textbf{Multi-GPU (2 vs.\ 4 GPUs per node).}\ Re-run the same
+              validation and timing harness on Perlmutter jobs that allocate
+              two and four A100s, keeping a simple 1D CSR vertex split and
+              exchanging boundary frontiers with NCCL (or MPI). The goal is an
+              apples-to-apples curve: how much of the single-GPU advantage
+              survives once frontier traffic and load imbalance cross NVLink,
+              and whether 4-GPU runs amortize setup enough to beat 2-GPU on
+              identical budgets.
+
+        \item \textbf{Warp--bitmap fused SpMV (not emphasized on the poster).}\ The
+              repo implements \texttt{warpbitmap} for linear SpMV BFS, but we
+              lead with the four standalone kernels here. Next step is a focused
+              study: when does fusing cooperative row scans with a bitmap
+              frontier beat the best non-fused pick, how does it interact with
+              push--pull scheduling, and on which graphs does the extra
+              $32\times$ thread launch footprint dominate? That lines up with
+              README tables once graph-first has a matching breakdown.
+
+        \item \textbf{Harder inputs.}\ Fold in SNAP / GAP / road instances and
+              compare against \textbf{cuGraph} once multi-GPU baselines exist.
     \end{itemize}
+    \vspace{2.5em}
 }
 
-\block{10.\ Real-World Graphs}{
-    Replace synthetic graphs with public benchmarks:
-    \begin{itemize}\setlength\itemsep{2pt}
-        \item SNAP: \texttt{soc-LiveJournal1}, \texttt{web-Google},
-              \texttt{roadNet-CA}, \texttt{wiki-Talk}.
-        \item GAP suite: \texttt{kron, urand, web, road, twitter}.
-        \item DIMACS road networks (push-pull stress test).
-    \end{itemize}
-    Compare against \textbf{NVIDIA cuGraph} as the production baseline.
+\block{10.\ Runtime (kernel ms)}{
+    \scriptsize
+    \setlength{\tabcolsep}{2.5pt}
+    \raggedright
+    \textbf{Linear-algebraic SpMV} (Perlmutter A100; matches
+    \texttt{linear-algebraic/README.md}). Times in ms; \textbf{bold} = best per row.
+
+    \vspace{0.25em}
+    \centering
+    \begin{tabular}{@{}l rr rrrrr@{}}
+        \toprule
+        & $\bar d$ & dep & Bsln & Wrp & Bmp & P/P & W+B \\
+        \midrule
+        \multicolumn{8}{@{}l}{\itshape Medium ($10^3$ vertices)} \\
+        \texttt{m\_chain} & 2 & 999 & 20.19 & 21.57 & \textbf{19.02} & 32.11 & 23.95 \\
+        \texttt{m\_dense} & 100 & 2 & 5.30 & 7.02 & 0.58 & 0.65 & \textbf{0.57} \\
+        \texttt{m\_sparse} & 6 & 6 & 2.47 & \textbf{0.61} & 0.63 & 0.79 & 0.69 \\
+        \midrule
+        \multicolumn{8}{@{}l}{\itshape Large ($10^5$ vertices)} \\
+        \texttt{l\_dense} & 100 & 4 & 4.76 & 14.00 & 4.44 & 4.67 & \textbf{4.41} \\
+        \texttt{l\_power} & 40 & 3 & 2.81 & 2.56 & 2.46 & 4.38 & \textbf{2.41} \\
+        \texttt{l\_sparse} & 10 & 7 & 11.34 & 1.79 & 18.15 & 1.79 & \textbf{1.58} \\
+        \bottomrule
+    \end{tabular}
+
+    \vspace{0.55em}
+    \raggedright
+    \textbf{Graph-first} (direction-optimizing); per-kernel table \tabtodo---same
+    graph names, to be filled from the graph-first driver.
+
+    \vspace{0.2em}
+    \centering
+    \begin{tabular}{@{}l rr rrr@{}}
+        \toprule
+        & $\bar d$ & dep & top-down & bottom-up & hybrid \\
+        \midrule
+        \texttt{m\_chain} & 2 & 999 & \tabtodo & \tabtodo & \tabtodo \\
+        \texttt{m\_dense} & 100 & 2 & \tabtodo & \tabtodo & \tabtodo \\
+        \texttt{m\_sparse} & 6 & 6 & \tabtodo & \tabtodo & \tabtodo \\
+        \midrule
+        \texttt{l\_dense} & 100 & 4 & \tabtodo & \tabtodo & \tabtodo \\
+        \texttt{l\_power} & 40 & 3 & \tabtodo & \tabtodo & \tabtodo \\
+        \texttt{l\_sparse} & 10 & 7 & \tabtodo & \tabtodo & \tabtodo \\
+        \bottomrule
+    \end{tabular}
 }
 
-\block{11.\ Algorithmic Extensions \& Open Questions}{
-    The SpMV abstraction generalizes via semirings (GraphBLAS):
-    \begin{itemize}\setlength\itemsep{2pt}
-        \item \textbf{SSSP} -- min-plus semiring over weighted graphs.
-        \item \textbf{Connected components} -- label-propagation SpMV.
-        \item \textbf{Triangle counting / $k$-core} -- shared kernels.
-    \end{itemize}
-    Graph-first extends to delta-stepping SSSP and asynchronous
-    label-propagation. Open questions:
-    \begin{itemize}\setlength\itemsep{2pt}
-        \item Can a fused warp+bitmap+push-pull SpMV close the gap to
-              hand-tuned graph-first kernels?
-        \item Do Beamer's $\alpha,\beta$ heuristics still hold on
-              HBM3 GPUs (H100, MI300)?
-        \item How does this compare to CPU SuiteSparse:GraphBLAS?
-    \end{itemize}
-}
-
-\block{12.\ Energy Profiling}{
-    Runtime is only one axis. A natural follow-up is energy/edge using NVML:
-    \begin{itemize}\setlength\itemsep{2pt}
-        \item Bracket each BFS with
-              \texttt{nvmlDevice\-GetTotalEnergy\-Consumption}
-              for $\Delta J$ per traversal.
-        \item Joules-per-edge (\emph{GTEPS/W}) as a primary metric.
-        \item Is the fastest kernel also the most energy-efficient?
-    \end{itemize}
-}
-
-\block{13.\ References \& Code}{
+\block{11.\ References \& Code}{
     \footnotesize
     \begin{thebibliography}{9}
     \setlength\itemsep{1pt}

@@ -1,6 +1,6 @@
 # =============================================================================
 #  Makefile for the parallel-BFS poster
-#  Output: poster.pdf  (42 in x 30 in landscape, matte stock)
+#  Output: poster.pdf  (40 in x 30 in landscape, matte stock)
 # =============================================================================
 
 LATEX     = pdflatex
