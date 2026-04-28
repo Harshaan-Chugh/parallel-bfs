@@ -15,6 +15,7 @@ import subprocess
 import sys
 import time
 from pathlib import Path
+from typing import List
 
 
 LINALG_VARIANTS = ["baseline", "warp", "bitmap", "pushpull", "warpbitmap"]
@@ -64,7 +65,7 @@ def parse_output(output: str) -> dict:
     return row
 
 
-def graph_files(root: Path, groups: list[str]) -> list[Path]:
+def graph_files(root: Path, groups: List[str]) -> List[Path]:
     test_dir = root / "test-graphs"
     graphs = []
     for group in groups:
@@ -72,7 +73,7 @@ def graph_files(root: Path, groups: list[str]) -> list[Path]:
     return graphs
 
 
-def run_one(cmd: list[str], root: Path, env: dict) -> str:
+def run_one(cmd: List[str], root: Path, env: dict) -> str:
     print("$ " + " ".join(cmd), flush=True)
     completed = subprocess.run(
         cmd,
