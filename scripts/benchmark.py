@@ -79,7 +79,7 @@ def run_one(cmd: List[str], root: Path, env: dict) -> str:
         cmd,
         cwd=root,
         env=env,
-        text=True,
+        universal_newlines=True,
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
     )
