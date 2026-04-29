@@ -29,3 +29,24 @@ make graphfirst
 
 The reported `BFS time` is measured with CUDA events around the traversal and
 excludes graph loading and result printing.
+
+## Runtime Results
+
+These runtimes are medians of 10 runs on a single NVIDIA A100 GPU on NERSC
+Perlmutter. The raw data is in `../results/benchmark_20260428_042111.csv`, with
+medians in `../results/summary_20260428_042111.csv`.
+
+| Graph | Avg Degree | Depth | Graph-first ms | Top-down launches | Bottom-up launches |
+|-------|-----------:|------:|---------------:|------------------:|-------------------:|
+| medium_chain | 2 | 999 | 32.92 | 1000 | 0 |
+| medium_dense | 100 | 2 | 0.70 | 1 | 2 |
+| medium_sparse | 6 | 6 | 0.76 | 4 | 3 |
+| large_dense | 100 | 4 | 5.09 | 3 | 2 |
+| large_powerlaw | 40 | 3 | 6.26 | 2 | 2 |
+| large_sparse | 10 | 7 | 1.93 | 5 | 3 |
+
+The chain graph is a worst case for direction optimization because each level
+has almost no frontier parallelism. On dense and sparse random graphs, the
+hybrid stays close to the best SpMV variant; on the power-law graph, queue
+construction and atomic updates around hub-heavy frontiers dominate more of the
+runtime.

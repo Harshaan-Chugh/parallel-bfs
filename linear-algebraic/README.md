@@ -32,21 +32,21 @@ The **`baseline`** kernel is the simplest approach: it assigns exactly **one thr
 
 ## Runtime Results
 
-Here's how all the optimizations stack up. These runtimes (in milliseconds) were captured on a single NVIDIA A100 GPU on NERSC Perlmutter. They measure the pure BFS kernel execution time (excluding graph loading and printing).
+Here's how all the optimizations stack up. These runtimes (in milliseconds) are medians of 10 runs on a single NVIDIA A100 GPU on NERSC Perlmutter. They measure the pure BFS kernel execution time (excluding graph loading and printing). The raw data is in `../results/benchmark_20260428_042111.csv`, with medians in `../results/summary_20260428_042111.csv`.
 
 ### Medium Graphs (1K vertices)
 | Graph | Avg Degree | Depth | Baseline | Warp | Bitmap | Push-Pull | Warp-Bitmap |
 |-------|-----------|-------|----------|------|--------|-----------|-------------|
-| medium_chain | 2 | 999 | 20.19 | 21.57 | 19.02 | 32.11 | 23.95 |
-| medium_dense | 100 | 2 | 5.30 | 7.02 | 0.58 | 0.65 | **0.57** |
-| medium_sparse | 6 | 6 | 2.47 | 0.61 | 0.63 | 0.79 | 0.69 |
+| medium_chain | 2 | 999 | 19.55 | 19.29 | **18.73** | 32.50 | 19.22 |
+| medium_dense | 100 | 2 | 0.61 | 2.39 | 0.60 | 0.67 | **0.56** |
+| medium_sparse | 6 | 6 | 0.69 | **0.67** | 0.68 | 0.80 | 0.67 |
 
 ### Large Graphs (100K vertices)
 | Graph | Avg Degree | Depth | Baseline | Warp | Bitmap | Push-Pull | Warp-Bitmap |
 |-------|-----------|-------|----------|------|--------|-----------|-------------|
-| large_dense | 100 | 4 | 4.76 | 14.00 | 4.44 | 4.67 | **4.41** |
-| large_powerlaw | 40 | 3 | 2.81 | 2.56 | 2.46 | 4.38 | **2.41** |
-| large_sparse | 10 | 7 | 11.34 | 1.79 | 18.15 | 1.79 | **1.58** |
+| large_dense | 100 | 4 | 4.92 | 5.01 | **4.44** | 4.81 | 8.10 |
+| large_powerlaw | 40 | 3 | 2.83 | 8.70 | 2.47 | 4.42 | **2.33** |
+| large_sparse | 10 | 7 | 1.71 | 1.81 | **1.45** | 1.81 | 1.58 |
 
 *Note: The chain graph is a worst-case scenario for all GPU BFS algorithms because it forces 999 sequential kernel launches with virtually no parallelism per level.*
 

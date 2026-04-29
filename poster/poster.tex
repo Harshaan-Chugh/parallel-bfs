@@ -82,9 +82,7 @@
 \definecolor{donegreen}{HTML}{1E8449}
 \definecolor{accentblue}{HTML}{1F4E79}
 \definecolor{softgray}{HTML}{F4F6F8}
-\definecolor{todored}{HTML}{C0392B}
 
-\newcommand{\tabtodo}{\textcolor{todored}{TODO}}
 \newsavebox{\bfsfiveleft}
 
 % Code-block style for short kernel snippets (compact for poster).
@@ -361,17 +359,21 @@
 
 % --- Results sub-section (full width within methods) -----------------
 \block{8.\ Results (head-to-head summary)}{
+    \small
     \textbf{Median of $N{=}10$ runs} on one Perlmutter A100 (CUDA events;
-    load/print excluded).\ On every synthetic in block~\textbf{5}, the fastest
-    SpMV kernel beats graph-first in our current timings; gaps are tight on
-    sparse/dense random graphs (about $1.1\text{--}1.3\times$) and widen on
-    power-law and chain stress cases.
+    load/print excluded). The fastest SpMV kernel beats graph-first on each
+    current synthetic graph; gaps are tight on random sparse/dense inputs and
+    wider on power-law and chain stress cases.
 
-    \vspace{0.2em}
-    \textbf{Per-kernel SpMV sweep} (all variants in ms) is tabulated in
-    \textbf{10} together with a \textbf{graph-first timing grid} placeholder---no
-    per-variant README table yet for graph-first, so those cells are marked
-    \tabtodo{} until we freeze a comparable breakout.
+    \vspace{0.15em}
+    \centering
+    \includegraphics[width=0.78\linewidth]{figures/head_to_head_runtime.pdf}
+
+    \vspace{-0.05em}
+    \raggedright
+    \textbf{Takeaways.}\ Graph-first is within $1.14\text{--}1.33\times$ on
+    random sparse/dense inputs. Power-law frontiers expose queue and atomic
+    update overhead; the chain graph forces 999 mostly sequential levels.
 }
 
 % =============================================================================
@@ -410,8 +412,8 @@
     \scriptsize
     \setlength{\tabcolsep}{2.5pt}
     \raggedright
-    \textbf{Linear-algebraic SpMV} (Perlmutter A100; matches
-    \texttt{linear-algebraic/README.md}). Times in ms; \textbf{bold} = best per row.
+    \textbf{Linear-algebraic SpMV} (Perlmutter A100; median of 10 runs).
+    Times in ms; \textbf{bold} = best per row.
 
     \vspace{0.25em}
     \centering
@@ -420,35 +422,35 @@
         & $\bar d$ & dep & Bsln & Wrp & Bmp & P/P & W+B \\
         \midrule
         \multicolumn{8}{@{}l}{\itshape Medium ($10^3$ vertices)} \\
-        \texttt{m\_chain} & 2 & 999 & 20.19 & 21.57 & \textbf{19.02} & 32.11 & 23.95 \\
-        \texttt{m\_dense} & 100 & 2 & 5.30 & 7.02 & 0.58 & 0.65 & \textbf{0.57} \\
-        \texttt{m\_sparse} & 6 & 6 & 2.47 & \textbf{0.61} & 0.63 & 0.79 & 0.69 \\
+        \texttt{m\_chain} & 2 & 999 & 19.55 & 19.29 & \textbf{18.73} & 32.50 & 19.22 \\
+        \texttt{m\_dense} & 100 & 2 & 0.61 & 2.39 & 0.60 & 0.67 & \textbf{0.56} \\
+        \texttt{m\_sparse} & 6 & 6 & 0.69 & \textbf{0.67} & 0.68 & 0.80 & 0.67 \\
         \midrule
         \multicolumn{8}{@{}l}{\itshape Large ($10^5$ vertices)} \\
-        \texttt{l\_dense} & 100 & 4 & 4.76 & 14.00 & 4.44 & 4.67 & \textbf{4.41} \\
-        \texttt{l\_power} & 40 & 3 & 2.81 & 2.56 & 2.46 & 4.38 & \textbf{2.41} \\
-        \texttt{l\_sparse} & 10 & 7 & 11.34 & 1.79 & 18.15 & 1.79 & \textbf{1.58} \\
+        \texttt{l\_dense} & 100 & 4 & 4.92 & 5.01 & \textbf{4.44} & 4.81 & 8.10 \\
+        \texttt{l\_power} & 40 & 3 & 2.83 & 8.70 & 2.47 & 4.42 & \textbf{2.33} \\
+        \texttt{l\_sparse} & 10 & 7 & 1.71 & 1.81 & \textbf{1.45} & 1.81 & 1.58 \\
         \bottomrule
     \end{tabular}
 
     \vspace{0.55em}
     \raggedright
-    \textbf{Graph-first} (direction-optimizing); per-kernel table \tabtodo---same
-    graph names, to be filled from the graph-first driver.
+    \textbf{Graph-first} direction-optimizing hybrid. TD/BU counts show how
+    many top-down vs.\ bottom-up kernel launches the alpha/beta heuristic chose.
 
     \vspace{0.2em}
     \centering
-    \begin{tabular}{@{}l rr rrr@{}}
+    \begin{tabular}{@{}l rr rr@{}}
         \toprule
-        & $\bar d$ & dep & top-down & bottom-up & hybrid \\
+        & $\bar d$ & dep & ms & TD/BU \\
         \midrule
-        \texttt{m\_chain} & 2 & 999 & \tabtodo & \tabtodo & \tabtodo \\
-        \texttt{m\_dense} & 100 & 2 & \tabtodo & \tabtodo & \tabtodo \\
-        \texttt{m\_sparse} & 6 & 6 & \tabtodo & \tabtodo & \tabtodo \\
+        \texttt{m\_chain} & 2 & 999 & 32.92 & 1000/0 \\
+        \texttt{m\_dense} & 100 & 2 & 0.70 & 1/2 \\
+        \texttt{m\_sparse} & 6 & 6 & 0.76 & 4/3 \\
         \midrule
-        \texttt{l\_dense} & 100 & 4 & \tabtodo & \tabtodo & \tabtodo \\
-        \texttt{l\_power} & 40 & 3 & \tabtodo & \tabtodo & \tabtodo \\
-        \texttt{l\_sparse} & 10 & 7 & \tabtodo & \tabtodo & \tabtodo \\
+        \texttt{l\_dense} & 100 & 4 & 5.09 & 3/2 \\
+        \texttt{l\_power} & 40 & 3 & 6.26 & 2/2 \\
+        \texttt{l\_sparse} & 10 & 7 & 1.93 & 5/3 \\
         \bottomrule
     \end{tabular}
 }

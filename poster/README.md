@@ -54,8 +54,8 @@ implementation and the measured Perlmutter benchmark results.
 | Introduction (motivation, paradigms, research questions, warp code example) | done |
 | Common experimental setup + test-graph table | done |
 | Linear-algebraic methods (4 kernels in block 6; warp snippet in block 4) | done |
-| Results table (best SpMV variant vs. graph-first, from `results/summary_20260428_042111.csv`) | done |
-| Graph-first methods (top-down/bottom-up + alpha/beta heuristic + flow diagram) | done |
+| Results plot + tables (from `results/summary_20260428_042111.csv`) | done |
+| Graph-first methods (top-down/bottom-up + alpha/beta heuristic) | done |
 | Further-study column (multi-GPU, real-world graphs, GraphBLAS extensions) | done |
 | References | done |
 | Repository URL | done |
@@ -65,7 +65,8 @@ implementation and the measured Perlmutter benchmark results.
 
 1. Re-run the benchmark only if code or inputs change:
    `python3 scripts/benchmark.py --repeats 10 --groups medium large`.
-2. Update block **8. Results** from `results/summary_20260428_042111.csv`.
+2. Update block **8. Results** and `figures/head_to_head_runtime.pdf`
+   from `results/summary_20260428_042111.csv`.
 3. Re-run `make` and proof-read at 100% zoom in your PDF viewer.
 
 ## Dependencies
