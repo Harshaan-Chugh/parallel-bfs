@@ -158,6 +158,20 @@ SNAP inputs are downloaded into:
 snap-graphs/
 ```
 
+## Current MPI Results (CPU, Perlmutter)
+
+Edgelist suite job `52329335` completed successfully and produced:
+
+- `results/mpi_raw/correctness.txt` (tiny graphs; 1D ranks \(1,2,4\), 2D ranks \(1,4\))
+- `results/mpi_raw/timing_medium.csv`
+- `results/mpi_raw/timing_large.csv`
+- Slurm log: `results/mpi_raw/edgelist_test_52329335.out`
+
+SNAP road network tests (PA/TX/CA) write to:
+
+- `results/mpi_raw/snap_correctness.txt`
+- `results/mpi_raw/timing_snap.csv`
+
 ---
 
 ## Current GPU Results

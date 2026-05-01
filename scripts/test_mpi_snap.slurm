@@ -5,9 +5,9 @@
 #SBATCH -N 4
 #SBATCH --ntasks-per-node=16
 #SBATCH -t 01:00:00
-#SBATCH -D .
-#SBATCH -o results/mpi_raw/snap_test_%j.out
-#SBATCH -e results/mpi_raw/snap_test_%j.err
+#SBATCH --chdir=/global/homes/h/hsc53/parallel-bfs
+#SBATCH -o /global/homes/h/hsc53/parallel-bfs/results/mpi_raw/snap_test_%j.out
+#SBATCH -e /global/homes/h/hsc53/parallel-bfs/results/mpi_raw/snap_test_%j.err
 
 # ============================================================
 # MPI BFS: SNAP road network benchmark

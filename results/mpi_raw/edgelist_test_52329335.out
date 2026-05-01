@@ -1,0 +1,115 @@
+========================================
+Phase 1: Correctness (tiny edgelists)
+Date: Fri May  1 11:49:08 AM PDT 2026
+========================================
+1D np=1 tiny_bipartite.edgelist: PASS: all 8 vertices match reference BFS from source 0
+1D np=2 tiny_bipartite.edgelist: PASS: all 8 vertices match reference BFS from source 0
+1D np=4 tiny_bipartite.edgelist: PASS: all 8 vertices match reference BFS from source 0
+2D np=1 tiny_bipartite.edgelist: PASS: all 8 vertices match reference BFS from source 0
+2D np=4 tiny_bipartite.edgelist: PASS: all 8 vertices match reference BFS from source 0
+1D np=1 tiny_complete.edgelist: PASS: all 6 vertices match reference BFS from source 0
+1D np=2 tiny_complete.edgelist: PASS: all 6 vertices match reference BFS from source 0
+1D np=4 tiny_complete.edgelist: PASS: all 6 vertices match reference BFS from source 0
+2D np=1 tiny_complete.edgelist: PASS: all 6 vertices match reference BFS from source 0
+2D np=4 tiny_complete.edgelist: PASS: all 6 vertices match reference BFS from source 0
+1D np=1 tiny_cycle.edgelist: PASS: all 6 vertices match reference BFS from source 0
+1D np=2 tiny_cycle.edgelist: PASS: all 6 vertices match reference BFS from source 0
+1D np=4 tiny_cycle.edgelist: PASS: all 6 vertices match reference BFS from source 0
+2D np=1 tiny_cycle.edgelist: PASS: all 6 vertices match reference BFS from source 0
+2D np=4 tiny_cycle.edgelist: PASS: all 6 vertices match reference BFS from source 0
+1D np=1 tiny_disconnected.edgelist: PASS: all 8 vertices match reference BFS from source 0
+1D np=2 tiny_disconnected.edgelist: PASS: all 8 vertices match reference BFS from source 0
+1D np=4 tiny_disconnected.edgelist: PASS: all 8 vertices match reference BFS from source 0
+2D np=1 tiny_disconnected.edgelist: PASS: all 8 vertices match reference BFS from source 0
+2D np=4 tiny_disconnected.edgelist: PASS: all 8 vertices match reference BFS from source 0
+1D np=1 tiny_grid.edgelist: PASS: all 9 vertices match reference BFS from source 0
+1D np=2 tiny_grid.edgelist: PASS: all 9 vertices match reference BFS from source 0
+1D np=4 tiny_grid.edgelist: PASS: all 9 vertices match reference BFS from source 0
+2D np=1 tiny_grid.edgelist: PASS: all 9 vertices match reference BFS from source 0
+2D np=4 tiny_grid.edgelist: PASS: all 9 vertices match reference BFS from source 0
+1D np=1 tiny_line.edgelist: PASS: all 5 vertices match reference BFS from source 0
+1D np=2 tiny_line.edgelist: PASS: all 5 vertices match reference BFS from source 0
+1D np=4 tiny_line.edgelist: PASS: all 5 vertices match reference BFS from source 0
+2D np=1 tiny_line.edgelist: PASS: all 5 vertices match reference BFS from source 0
+2D np=4 tiny_line.edgelist: PASS: all 5 vertices match reference BFS from source 0
+1D np=1 tiny_star.edgelist: PASS: all 8 vertices match reference BFS from source 0
+1D np=2 tiny_star.edgelist: PASS: all 8 vertices match reference BFS from source 0
+1D np=4 tiny_star.edgelist: PASS: all 8 vertices match reference BFS from source 0
+2D np=1 tiny_star.edgelist: PASS: all 8 vertices match reference BFS from source 0
+2D np=4 tiny_star.edgelist: PASS: all 8 vertices match reference BFS from source 0
+1D np=1 tiny_tree.edgelist: PASS: all 7 vertices match reference BFS from source 0
+1D np=2 tiny_tree.edgelist: PASS: all 7 vertices match reference BFS from source 0
+1D np=4 tiny_tree.edgelist: PASS: all 7 vertices match reference BFS from source 0
+2D np=1 tiny_tree.edgelist: PASS: all 7 vertices match reference BFS from source 0
+2D np=4 tiny_tree.edgelist: PASS: all 7 vertices match reference BFS from source 0
+
+========================================
+Phase 2: Timing (medium edgelists)
+========================================
+--- medium_chain ---
+medium_chain,1D,1,0.002295,1000,999
+medium_chain,1D,2,0.003015,1000,999
+medium_chain,1D,4,0.002960,1000,999
+medium_chain,1D,8,0.003829,1000,999
+medium_chain,1D,16,0.003862,1000,999
+medium_chain,2D,1,0.004349,1000,999
+medium_chain,2D,4,0.006449,1000,999
+medium_chain,2D,9,0.008137,1000,999
+medium_chain,2D,16,0.008230,1000,999
+--- medium_dense ---
+medium_dense,1D,1,0.000125,1000,2
+medium_dense,1D,2,0.000067,1000,2
+medium_dense,1D,4,0.000088,1000,2
+medium_dense,1D,8,0.000085,1000,2
+medium_dense,1D,16,0.000067,1000,2
+medium_dense,2D,1,0.000130,1000,2
+medium_dense,2D,4,0.001108,1000,2
+medium_dense,2D,9,0.001142,1000,2
+medium_dense,2D,16,0.001175,1000,2
+--- medium_sparse ---
+medium_sparse,1D,1,0.000084,998,6
+medium_sparse,1D,2,0.000059,998,6
+medium_sparse,1D,4,0.000046,998,6
+medium_sparse,1D,8,0.000045,998,6
+medium_sparse,1D,16,0.000051,998,6
+medium_sparse,2D,1,0.000103,998,6
+medium_sparse,2D,4,0.001201,998,6
+medium_sparse,2D,9,0.001243,998,6
+medium_sparse,2D,16,0.001252,998,6
+
+========================================
+Phase 3: Timing (large edgelists)
+========================================
+--- large_dense ---
+large_dense,1D,1,0.020997,100000,4
+large_dense,1D,2,0.010245,100000,4
+large_dense,1D,4,0.005961,100000,4
+large_dense,1D,8,0.005427,100000,4
+large_dense,1D,16,0.007711,100000,4
+large_dense,2D,1,0.021197,100000,4
+large_dense,2D,4,0.006823,100000,4
+large_dense,2D,9,0.004192,100000,4
+large_dense,2D,16,0.003283,100000,4
+--- large_powerlaw ---
+large_powerlaw,1D,1,0.005861,100000,3
+large_powerlaw,1D,2,0.003833,100000,3
+large_powerlaw,1D,4,0.002589,100000,3
+large_powerlaw,1D,8,0.001818,100000,3
+large_powerlaw,1D,16,0.001511,100000,3
+large_powerlaw,2D,1,0.006828,100000,3
+large_powerlaw,2D,4,0.004043,100000,3
+large_powerlaw,2D,9,0.003089,100000,3
+large_powerlaw,2D,16,0.002725,100000,3
+--- large_sparse ---
+large_sparse,1D,1,0.009387,99996,7
+large_sparse,1D,2,0.005603,99996,7
+large_sparse,1D,4,0.004360,99996,7
+large_sparse,1D,8,0.003483,99996,7
+large_sparse,1D,16,0.003470,99996,7
+large_sparse,2D,1,0.011029,99996,7
+large_sparse,2D,4,0.005218,99996,7
+large_sparse,2D,9,0.004011,99996,7
+large_sparse,2D,16,0.003451,99996,7
+
+=== All edgelist tests complete ===
+Date: Fri May  1 11:51:23 AM PDT 2026

@@ -1,0 +1,36 @@
+=== Correctness Validation: 1D BFS ===
+--- tiny_bipartite.edgelist, np=1 ---
+PASS: all 8 vertices match reference BFS from source 0
+--- tiny_bipartite.edgelist, np=2 ---
+PASS: all 8 vertices match reference BFS from source 0
+--- tiny_bipartite.edgelist, np=4 ---
+PASS: all 8 vertices match reference BFS from source 0
+--- tiny_complete.edgelist, np=1 ---
+PASS: all 6 vertices match reference BFS from source 0
+--- tiny_complete.edgelist, np=2 ---
+PASS: all 6 vertices match reference BFS from source 0
+--- tiny_complete.edgelist, np=4 ---
+PASS: all 6 vertices match reference BFS from source 0
+--- tiny_cycle.edgelist, np=1 ---
+PASS: all 6 vertices match reference BFS from source 0
+--- tiny_cycle.edgelist, np=2 ---
+PASS: all 6 vertices match reference BFS from source 0
+--- tiny_cycle.edgelist, np=4 ---
+PASS: all 6 vertices match reference BFS from source 0
+--- tiny_disconnected.edgelist, np=1 ---
+PASS: all 8 vertices match reference BFS from source 0
+--- tiny_disconnected.edgelist, np=2 ---
+PASS: all 8 vertices match reference BFS from source 0
+--- tiny_disconnected.edgelist, np=4 ---
+PASS: all 8 vertices match reference BFS from source 0
+--- tiny_grid.edgelist, np=1 ---
+PASS: all 9 vertices match reference BFS from source 0
+--- tiny_grid.edgelist, np=2 ---
+PASS: all 9 vertices match reference BFS from source 0
+--- tiny_grid.edgelist, np=4 ---
+PASS: all 9 vertices match reference BFS from source 0
+--- tiny_line.edgelist, np=1 ---
+PASS: all 5 vertices match reference BFS from source 0
+--- tiny_line.edgelist, np=2 ---
+PASS: all 5 vertices match reference BFS from source 0
+--- tiny_line.edgelist, np=4 ---
