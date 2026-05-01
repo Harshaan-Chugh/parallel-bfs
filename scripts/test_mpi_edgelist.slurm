@@ -5,6 +5,9 @@
 #SBATCH -N 1
 #SBATCH --ntasks-per-node=16
 #SBATCH -t 00:30:00
+#SBATCH -D .
+#SBATCH -o results/mpi_raw/edgelist_test_%j.out
+#SBATCH -e results/mpi_raw/edgelist_test_%j.err
 
 # ============================================================
 # MPI BFS: Full edgelist test suite
