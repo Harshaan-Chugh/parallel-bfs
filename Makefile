@@ -13,7 +13,14 @@ BUILD_DIR = build
 LINALG     = $(BUILD_DIR)/bfs_linalg
 GRAPHFIRST = $(BUILD_DIR)/bfs_graphfirst
 
-.PHONY: all clean linalg graphfirst
+# MPI (CPU-only, no CUDA dependency)
+MPICC    = cc
+MPIFLAGS = -O2 -Wall -std=c99
+
+MPI_1D = $(BUILD_DIR)/bfs_mpi_1d
+MPI_2D = $(BUILD_DIR)/bfs_mpi_2d
+
+.PHONY: all clean linalg graphfirst mpi mpi-1d mpi-2d
 
 all: $(BUILD_DIR) linalg graphfirst
 
@@ -25,6 +32,14 @@ linalg: $(BUILD_DIR)
 
 graphfirst: $(BUILD_DIR)
 	$(NVCC) $(NVCCFLAGS) -o $(GRAPHFIRST) graph-first/bfs_graphfirst.cu
+
+mpi: $(BUILD_DIR) mpi-1d mpi-2d
+
+mpi-1d: $(BUILD_DIR)
+	$(MPICC) $(MPIFLAGS) -o $(MPI_1D) mpi/bfs_mpi_1d.c -lm
+
+mpi-2d: $(BUILD_DIR)
+	$(MPICC) $(MPIFLAGS) -o $(MPI_2D) mpi/bfs_mpi_2d.c -lm
 
 clean:
 	rm -rf $(BUILD_DIR)

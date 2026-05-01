@@ -1,4 +1,3 @@
 build/
 results/
-poster/*.aux
-poster/*.log
+snap-graphs/
