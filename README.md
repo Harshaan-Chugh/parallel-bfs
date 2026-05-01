@@ -1,114 +1,175 @@
-# Parallel BFS: Linear Algebraic vs Graph-First
+# parallel-bfs
 
-Comparing two GPU-accelerated BFS approaches on the same CSR graph loader:
-- **Linear Algebraic** (`linear-algebraic/`): BFS via masked SpMV on a CSR adjacency matrix
-- **Graph-First** (`graph-first/`): Direction-optimizing BFS with queue push and bitmap pull kernels
+**High-performance Breadth-First Search across GPU and distributed-memory architectures.**
 
-## Quick Start
+This project implements and benchmarks BFS in two HPC settings:
+
+1. **Single-node GPU BFS on CUDA/A100**
+   - **Linear-Algebraic BFS**: expresses BFS as masked sparse matrix-vector multiplication over CSR graphs.
+   - **Graph-First BFS**: implements direction-optimizing push/pull traversal with GPU frontiers.
+
+2. **Multi-node CPU BFS with MPI on Perlmutter**
+   - **1D partitioning**: distributes graph ownership by vertex ranges.
+   - **2D partitioning**: explores communication-aware distributed graph partitioning.
+
+The goal is to compare BFS design tradeoffs across architectures: **linear algebra vs graph traversal on GPUs**, and **partitioning/communication strategies in distributed-memory MPI**.
+
+---
+
+## Highlights
+
+- Shared CSR graph loader for fair comparison between GPU implementations.
+- Multiple SpMV-style BFS variants: `baseline`, `warp`, `bitmap`, `pushpull`, and `warpbitmap`.
+- Graph-first CUDA BFS with tunable direction-switching parameters.
+- MPI BFS binaries for 1D and 2D distributed traversal.
+- Correctness validation against a Python reference BFS.
+- Benchmark scripts for synthetic edgelist graphs and SNAP road networks.
+- Raw result collection under `results/` for reproducibility.
+
+---
+
+## Repository Structure
+
+```text
+parallel-bfs/
+├── linear-algebraic/        # CUDA SpMV-style BFS implementation
+├── graph-first/             # CUDA direction-optimizing BFS implementation
+├── mpi/                     # MPI BFS implementation sources
+├── scripts/                 # Benchmark, validation, and Perlmutter batch scripts
+├── test-graphs/             # Synthetic graph inputs + Python reference validator
+├── snap-graphs/             # Downloaded SNAP road network inputs
+├── results/                 # Raw benchmark logs, CSVs, and summaries
+├── Makefile
+└── run.sh
+```
+
+---
+
+## Implementations
+
+### Linear-Algebraic GPU BFS
+
+The linear-algebraic implementation treats BFS as repeated sparse matrix-vector operations over a graph stored in CSR form. It explores several kernel variants to understand how frontier representation and memory access patterns affect performance.
+
+Supported variants:
+
+| Variant | Idea |
+|---|---|
+| `baseline` | straightforward masked traversal |
+| `warp` | warp-oriented parallelism for neighbor checks |
+| `bitmap` | compact frontier/visited representation |
+| `pushpull` | switches between push and pull traversal modes |
+| `warpbitmap` | combines warp-level traversal with bitmap state |
+
+### Graph-First GPU BFS
+
+The graph-first implementation uses a more traditional frontier-based BFS design. It supports direction optimization, switching between push-style and pull-style traversal based on frontier size and graph structure.
+
+Key tuning parameters:
 
 ```bash
-# Build both
+./build/bfs_graphfirst <graph.edgelist> <source> --alpha 14 --beta 24
+```
+
+### MPI Distributed BFS
+
+The MPI implementation targets distributed-memory CPU execution on Perlmutter. It evaluates how graph partitioning impacts communication and scalability.
+
+Built binaries:
+
+```text
+build/bfs_mpi_1d
+build/bfs_mpi_2d
+```
+
+The MPI workflow includes correctness tests on small edgelist graphs and benchmark runs on larger synthetic and SNAP road network graphs.
+
+---
+
+## Build
+
+```bash
 make
+```
 
-# Test on small graphs (correctness)
-./run.sh test-tiny
+Useful build targets:
 
-# Validate against reference BFS
+```bash
+make linalg       # build linear-algebraic CUDA BFS
+make graphfirst   # build graph-first CUDA BFS
+make clean        # remove build artifacts
+```
+
+---
+
+## Validation and Benchmarking
+
+### GPU validation
+
+```bash
 ./run.sh validate
+```
 
-# Test on all sizes
-./run.sh test-all
+### GPU benchmarks
 
-# Benchmark on large graphs
+```bash
 ./run.sh bench
-
-# Produce a CSV for the poster/report
 python3 scripts/benchmark.py --repeats 10 --groups medium large
 ```
 
-## Commands
-
-| Command | Description |
-|---------|-------------|
-| `make` | Build both into `build/` |
-| `make linalg` | Build only linear-algebraic |
-| `make graphfirst` | Build only graph-first |
-| `make clean` | Remove `build/` |
-| `./run.sh build` | Same as `make` |
-| `./run.sh test-tiny` | Run on tiny graphs |
-| `./run.sh test-medium` | Run on medium (1K vertex) graphs |
-| `./run.sh test-large` | Run on large (100K vertex) graphs |
-| `./run.sh test-all` | Run on everything |
-| `./run.sh validate` | Run + check correctness vs Python BFS |
-| `./run.sh bench` | Benchmark both on large graphs |
-
-## Running a Single Graph
+### Single-graph runs
 
 ```bash
-./build/bfs_linalg test-graphs/tiny_cycle.edgelist 0
-./build/bfs_graphfirst test-graphs/large_powerlaw.edgelist 0
-
-# Linear-algebraic variants
-./build/bfs_linalg test-graphs/large_sparse.edgelist 0 baseline
-./build/bfs_linalg test-graphs/large_sparse.edgelist 0 warp
 ./build/bfs_linalg test-graphs/large_sparse.edgelist 0 bitmap
-./build/bfs_linalg test-graphs/large_sparse.edgelist 0 pushpull
-./build/bfs_linalg test-graphs/large_sparse.edgelist 0 warpbitmap
-
-# Graph-first alpha/beta switch tuning
 ./build/bfs_graphfirst test-graphs/large_sparse.edgelist 0 --alpha 14 --beta 24
 ```
 
-Both binaries support `--dump` to print one raw depth per vertex for validation.
+Both GPU binaries support `--dump` to print raw BFS depths for validation.
 
-## Generating Test Graphs
+---
 
-```bash
-cd test-graphs && python3 generate_graphs.py
-```
+## MPI / Perlmutter Workflow
 
-## Project Structure
-
-```
-parallel-bfs/
-├── Makefile
-├── run.sh
-├── build/                  # compiled binaries (gitignored)
-├── linear-algebraic/
-│   └── bfs_linalg.cu       # SpMV-based BFS
-├── graph-first/
-│   └── bfs_graphfirst.cu   # direction-optimizing BFS
-├── scripts/
-│   ├── benchmark.py        # repeat benchmarks and write CSV
-│   └── perlmutter_bench.slurm
-└── test-graphs/
-    ├── graph_loader.h       # shared C graph loader (CSR)
-    ├── generate_graphs.py   # generates medium/large graphs
-    ├── validate_bfs.py      # reference BFS for validation
-    ├── tiny_*.edgelist      # small hand-written graphs
-    ├── medium_*.edgelist    # 1K vertex graphs
-    └── large_*.edgelist     # 100K vertex graphs
-```
-
-## GPU Note
-
-All scripts use `CUDA_VISIBLE_DEVICES=0` to restrict to 1 GPU.
-
-On Perlmutter, submit the batch benchmark with:
+Build the project, then submit the MPI test jobs from a Perlmutter login node:
 
 ```bash
-sbatch -A <your_nersc_account> scripts/perlmutter_bench.slurm
+make
+sbatch scripts/test_mpi_edgelist.slurm
+bash scripts/download_snap.sh
+sbatch scripts/test_mpi_snap.slurm
 ```
 
-The batch job builds both binaries, restricts execution to one GPU, and writes
-CSV timing data under `results/`.
+Expected MPI result locations:
 
-## Perlmutter Results
+```text
+results/mpi_raw/
+├── correctness.txt
+├── snap_correctness.txt
+├── timing_medium.csv
+├── timing_large.csv
+├── timing_snap.csv
+├── edgelist_test_<jobid>.out/.err
+└── snap_test_<jobid>.out/.err
+```
 
-The poster/report numbers are from `results/benchmark_20260428_042111.csv`
-and summarized in `results/summary_20260428_042111.csv`. Each entry below is
-the median of 10 single-GPU A100 runs, measured with CUDA events and excluding
-graph loading / printing.
+SNAP inputs are downloaded into:
+
+```text
+snap-graphs/
+```
+
+---
+
+## Current GPU Results
+
+The results below use median runtime over 10 single-GPU A100 runs on Perlmutter. Timings are measured with CUDA events and exclude graph loading and printing.
+
+Source files:
+
+```text
+results/benchmark_20260428_042111.csv
+results/summary_20260428_042111.csv
+```
 
 | Graph | Best SpMV variant | Best SpMV ms | Graph-first ms | Graph-first / SpMV |
 |---|---:|---:|---:|---:|
@@ -119,7 +180,6 @@ graph loading / printing.
 | `large_powerlaw` | warpbitmap | 2.325 | 6.264 | 2.69x |
 | `large_sparse` | bitmap | 1.446 | 1.927 | 1.33x |
 
-Current takeaway: the best linear-algebraic SpMV kernel wins on these six
-synthetic inputs, while graph-first is closest on random sparse/dense graphs
-and loses the most on the power-law input because queue construction and
-atomic frontier updates add overhead around hub-heavy frontiers.
+### Takeaway
+
+Across these six synthetic inputs, the best linear-algebraic SpMV kernel outperforms the graph-first implementation. Graph-first is most competitive on random sparse and dense graphs, while the largest gap appears on the power-law graph, where queue construction and atomic frontier updates add overhead around hub-heavy frontiers.
