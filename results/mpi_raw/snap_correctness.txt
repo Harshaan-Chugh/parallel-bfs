@@ -1,0 +1,9 @@
+roadNet-PA: 1087562/1090920 reachable, max_depth=541
+roadNet-PA: 1D np=1 vs np=4 MATCH
+roadNet-PA: 1D vs 2D MATCH
+roadNet-TX: 1351137/1393383 reachable, max_depth=722
+roadNet-TX: 1D np=1 vs np=4 MATCH
+roadNet-TX: 1D vs 2D MATCH
+roadNet-CA: 1957027/1971281 reachable, max_depth=554
+roadNet-CA: 1D np=1 vs np=4 MATCH
+roadNet-CA: 1D vs 2D MATCH

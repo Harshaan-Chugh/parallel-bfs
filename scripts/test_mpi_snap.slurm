@@ -16,7 +16,7 @@
 
 set -e
 
-ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+ROOT="${SLURM_SUBMIT_DIR:-/global/homes/h/hsc53/parallel-bfs}"
 BFS_1D="$ROOT/build/bfs_mpi_1d"
 BFS_2D="$ROOT/build/bfs_mpi_2d"
 SNAP="$ROOT/snap-graphs"

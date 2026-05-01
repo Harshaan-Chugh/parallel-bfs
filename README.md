@@ -14,6 +14,12 @@ This project implements and benchmarks BFS in two HPC settings:
 
 The goal is to compare BFS design tradeoffs across architectures: **linear algebra vs graph traversal on GPUs**, and **partitioning/communication strategies in distributed-memory MPI**.
 
+More docs:
+
+- **Linear-algebraic GPU BFS**: `linear-algebraic/README.md`
+- **Graph-first GPU BFS**: `graph-first/README.md`
+- **MPI BFS**: `mpi/README.md`
+
 ---
 
 ## Highlights
@@ -145,8 +151,10 @@ Expected MPI result locations:
 results/mpi_raw/
 ├── correctness.txt
 ├── snap_correctness.txt
-├── timing_medium.csv
-├── timing_large.csv
+├── timing_medium_trials.csv
+├── timing_medium_median.csv
+├── timing_large_trials.csv
+├── timing_large_median.csv
 ├── timing_snap.csv
 ├── edgelist_test_<jobid>.out/.err
 └── snap_test_<jobid>.out/.err
@@ -160,17 +168,153 @@ snap-graphs/
 
 ## Current MPI Results (CPU, Perlmutter)
 
-Edgelist suite job `52329335` completed successfully and produced:
+All raw MPI logs and CSVs live under `results/mpi_raw/`.
 
-- `results/mpi_raw/correctness.txt` (tiny graphs; 1D ranks \(1,2,4\), 2D ranks \(1,4\))
-- `results/mpi_raw/timing_medium.csv`
-- `results/mpi_raw/timing_large.csv`
-- Slurm log: `results/mpi_raw/edgelist_test_52329335.out`
+### Correctness
 
-SNAP road network tests (PA/TX/CA) write to:
+- **Edgelist tiny graphs**: all PASS (see `results/mpi_raw/correctness.txt`).
+- **SNAP road networks**: for PA/TX/CA, the depth vector matches between **1D np=1 vs np=4**, and **1D vs 2D** (see `results/mpi_raw/snap_correctness.txt`).
 
-- `results/mpi_raw/snap_correctness.txt`
-- `results/mpi_raw/timing_snap.csv`
+### Timing: synthetic edgelists (median of 10 trials)
+
+Source files:
+
+```text
+results/mpi_raw/timing_medium_trials.csv
+results/mpi_raw/timing_medium_median.csv
+results/mpi_raw/timing_large_trials.csv
+results/mpi_raw/timing_large_median.csv
+```
+
+Jobs:
+
+- Edgelist 10-trial timing job: `52331126` (log: `results/mpi_raw/edgelist_test_52331126.out`)
+
+<!-- BEGIN AUTO-GENERATED: MPI edgelist medium (median of 10 trials) -->
+| Graph | Strategy | Ranks | Median time (s) | Trials | Reachable | Max depth |
+|---|---:|---:|---:|---:|---:|---:|
+| `medium_chain` | 1D | 1 | 0.002195 | 10 | 1000 | 999 |
+| `medium_chain` | 1D | 2 | 0.002547 | 10 | 1000 | 999 |
+| `medium_chain` | 1D | 4 | 0.002883 | 10 | 1000 | 999 |
+| `medium_chain` | 1D | 8 | 0.003789 | 10 | 1000 | 999 |
+| `medium_chain` | 1D | 16 | 0.003820 | 10 | 1000 | 999 |
+| `medium_chain` | 2D | 1 | 0.004441 | 10 | 1000 | 999 |
+| `medium_chain` | 2D | 4 | 0.006936 | 10 | 1000 | 999 |
+| `medium_chain` | 2D | 9 | 0.007510 | 10 | 1000 | 999 |
+| `medium_chain` | 2D | 16 | 0.008404 | 10 | 1000 | 999 |
+| `medium_dense` | 1D | 1 | 0.000123 | 10 | 1000 | 2 |
+| `medium_dense` | 1D | 2 | 0.000073 | 10 | 1000 | 2 |
+| `medium_dense` | 1D | 4 | 0.000050 | 10 | 1000 | 2 |
+| `medium_dense` | 1D | 8 | 0.000052 | 10 | 1000 | 2 |
+| `medium_dense` | 1D | 16 | 0.000034 | 10 | 1000 | 2 |
+| `medium_dense` | 2D | 1 | 0.000124 | 10 | 1000 | 2 |
+| `medium_dense` | 2D | 4 | 0.001151 | 10 | 1000 | 2 |
+| `medium_dense` | 2D | 9 | 0.001169 | 10 | 1000 | 2 |
+| `medium_dense` | 2D | 16 | 0.001171 | 10 | 1000 | 2 |
+| `medium_sparse` | 1D | 1 | 0.000077 | 10 | 998 | 6 |
+| `medium_sparse` | 1D | 2 | 0.000060 | 10 | 998 | 6 |
+| `medium_sparse` | 1D | 4 | 0.000046 | 10 | 998 | 6 |
+| `medium_sparse` | 1D | 8 | 0.000046 | 10 | 998 | 6 |
+| `medium_sparse` | 1D | 16 | 0.000066 | 10 | 998 | 6 |
+| `medium_sparse` | 2D | 1 | 0.000104 | 10 | 998 | 6 |
+| `medium_sparse` | 2D | 4 | 0.001226 | 10 | 998 | 6 |
+| `medium_sparse` | 2D | 9 | 0.001240 | 10 | 998 | 6 |
+| `medium_sparse` | 2D | 16 | 0.001281 | 10 | 998 | 6 |
+<!-- END AUTO-GENERATED: MPI edgelist medium (median of 10 trials) -->
+
+<!-- BEGIN AUTO-GENERATED: MPI edgelist large (median of 10 trials) -->
+| Graph | Strategy | Ranks | Median time (s) | Trials | Reachable | Max depth |
+|---|---:|---:|---:|---:|---:|---:|
+| `large_dense` | 1D | 1 | 0.021069 | 10 | 100000 | 4 |
+| `large_dense` | 1D | 2 | 0.010233 | 10 | 100000 | 4 |
+| `large_dense` | 1D | 4 | 0.005952 | 10 | 100000 | 4 |
+| `large_dense` | 1D | 8 | 0.005335 | 10 | 100000 | 4 |
+| `large_dense` | 1D | 16 | 0.006686 | 10 | 100000 | 4 |
+| `large_dense` | 2D | 1 | 0.021171 | 10 | 100000 | 4 |
+| `large_dense` | 2D | 4 | 0.006842 | 10 | 100000 | 4 |
+| `large_dense` | 2D | 9 | 0.004279 | 10 | 100000 | 4 |
+| `large_dense` | 2D | 16 | 0.003220 | 10 | 100000 | 4 |
+| `large_powerlaw` | 1D | 1 | 0.005864 | 10 | 100000 | 3 |
+| `large_powerlaw` | 1D | 2 | 0.003843 | 10 | 100000 | 3 |
+| `large_powerlaw` | 1D | 4 | 0.002577 | 10 | 100000 | 3 |
+| `large_powerlaw` | 1D | 8 | 0.001827 | 10 | 100000 | 3 |
+| `large_powerlaw` | 1D | 16 | 0.001485 | 10 | 100000 | 3 |
+| `large_powerlaw` | 2D | 1 | 0.006811 | 10 | 100000 | 3 |
+| `large_powerlaw` | 2D | 4 | 0.004050 | 10 | 100000 | 3 |
+| `large_powerlaw` | 2D | 9 | 0.003115 | 10 | 100000 | 3 |
+| `large_powerlaw` | 2D | 16 | 0.002615 | 10 | 100000 | 3 |
+| `large_sparse` | 1D | 1 | 0.008906 | 10 | 99996 | 7 |
+| `large_sparse` | 1D | 2 | 0.005700 | 10 | 99996 | 7 |
+| `large_sparse` | 1D | 4 | 0.004100 | 10 | 99996 | 7 |
+| `large_sparse` | 1D | 8 | 0.003052 | 10 | 99996 | 7 |
+| `large_sparse` | 1D | 16 | 0.003157 | 10 | 99996 | 7 |
+| `large_sparse` | 2D | 1 | 0.011366 | 10 | 99996 | 7 |
+| `large_sparse` | 2D | 4 | 0.005213 | 10 | 99996 | 7 |
+| `large_sparse` | 2D | 9 | 0.004056 | 10 | 99996 | 7 |
+| `large_sparse` | 2D | 16 | 0.003262 | 10 | 99996 | 7 |
+<!-- END AUTO-GENERATED: MPI edgelist large (median of 10 trials) -->
+
+### Timing: SNAP road networks (median of 3 trials)
+
+Source file:
+
+```text
+results/mpi_raw/timing_snap.csv
+```
+
+Job:
+
+- SNAP benchmark job: `52331036` (log: `results/mpi_raw/snap_test_52331036.out`)
+
+<!-- BEGIN AUTO-GENERATED: MPI SNAP (median of 3 trials) -->
+| Graph | Strategy | Ranks | Median time (s) | Trials |
+|---|---:|---:|---:|---:|
+| `roadNet-CA` | 1D | 1 | 5.532491 | 3 |
+| `roadNet-CA` | 1D | 2 | 2.940258 | 3 |
+| `roadNet-CA` | 1D | 4 | 1.844127 | 3 |
+| `roadNet-CA` | 1D | 8 | 1.122868 | 3 |
+| `roadNet-CA` | 1D | 16 | 0.714548 | 3 |
+| `roadNet-CA` | 1D | 32 | 0.470961 | 3 |
+| `roadNet-CA` | 1D | 64 | 0.412492 | 3 |
+| `roadNet-CA` | 2D | 1 | 7.824045 | 3 |
+| `roadNet-CA` | 2D | 4 | 4.121734 | 3 |
+| `roadNet-CA` | 2D | 9 | 3.011879 | 3 |
+| `roadNet-CA` | 2D | 16 | 2.555635 | 3 |
+| `roadNet-CA` | 2D | 25 | 2.074113 | 3 |
+| `roadNet-CA` | 2D | 36 | 1.896778 | 3 |
+| `roadNet-CA` | 2D | 49 | 1.754454 | 3 |
+| `roadNet-CA` | 2D | 64 | 1.611111 | 3 |
+| `roadNet-PA` | 1D | 1 | 3.203230 | 3 |
+| `roadNet-PA` | 1D | 2 | 1.679436 | 3 |
+| `roadNet-PA` | 1D | 4 | 0.935017 | 3 |
+| `roadNet-PA` | 1D | 8 | 0.566721 | 3 |
+| `roadNet-PA` | 1D | 16 | 0.369628 | 3 |
+| `roadNet-PA` | 1D | 32 | 0.252237 | 3 |
+| `roadNet-PA` | 1D | 64 | 0.243842 | 3 |
+| `roadNet-PA` | 2D | 1 | 4.431716 | 3 |
+| `roadNet-PA` | 2D | 4 | 2.316969 | 3 |
+| `roadNet-PA` | 2D | 9 | 1.728164 | 3 |
+| `roadNet-PA` | 2D | 16 | 1.354890 | 3 |
+| `roadNet-PA` | 2D | 25 | 1.156486 | 3 |
+| `roadNet-PA` | 2D | 36 | 1.035597 | 3 |
+| `roadNet-PA` | 2D | 49 | 0.966735 | 3 |
+| `roadNet-PA` | 2D | 64 | 0.863500 | 3 |
+| `roadNet-TX` | 1D | 1 | 5.392899 | 3 |
+| `roadNet-TX` | 1D | 2 | 2.829177 | 3 |
+| `roadNet-TX` | 1D | 4 | 1.546556 | 3 |
+| `roadNet-TX` | 1D | 8 | 0.950362 | 3 |
+| `roadNet-TX` | 1D | 16 | 0.621578 | 3 |
+| `roadNet-TX` | 1D | 32 | 0.411471 | 3 |
+| `roadNet-TX` | 1D | 64 | 0.383658 | 3 |
+| `roadNet-TX` | 2D | 1 | 7.479369 | 3 |
+| `roadNet-TX` | 2D | 4 | 3.922785 | 3 |
+| `roadNet-TX` | 2D | 9 | 2.853090 | 3 |
+| `roadNet-TX` | 2D | 16 | 2.219828 | 3 |
+| `roadNet-TX` | 2D | 25 | 1.897720 | 3 |
+| `roadNet-TX` | 2D | 36 | 1.688000 | 3 |
+| `roadNet-TX` | 2D | 49 | 1.565437 | 3 |
+| `roadNet-TX` | 2D | 64 | 1.390648 | 3 |
+<!-- END AUTO-GENERATED: MPI SNAP (median of 3 trials) -->
 
 ---
 
