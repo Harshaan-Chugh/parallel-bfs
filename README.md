@@ -325,8 +325,8 @@ The results below use median runtime over 10 single-GPU A100 runs on Perlmutter.
 Source files:
 
 ```text
-results/benchmark_20260428_042111.csv
-results/summary_20260428_042111.csv
+results/graph-first-gpu/benchmark_20260428_042111.csv
+results/graph-first-gpu/summary_20260428_042111.csv
 ```
 
 | Graph | Best SpMV variant | Best SpMV ms | Graph-first ms | Graph-first / SpMV |
