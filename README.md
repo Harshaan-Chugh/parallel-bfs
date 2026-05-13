@@ -144,6 +144,13 @@ sbatch -A <your_nersc_account> scripts/perlmutter_multigpu_bench.slurm
 
 Outputs are written to `results/multigpu/`.
 
+Current multi-GPU result files:
+
+```text
+results/multigpu/benchmark_20260513_035802.csv
+results/multigpu/summary_20260513_035802.csv
+```
+
 ### Single-graph runs
 
 ```bash
@@ -362,3 +369,35 @@ results/graph-first-gpu/summary_20260428_042111.csv
 ### Takeaway
 
 Across these six synthetic inputs, the best linear-algebraic SpMV kernel outperforms the graph-first implementation. Graph-first is most competitive on random sparse and dense graphs, while the largest gap appears on the power-law graph, where queue construction and atomic frontier updates add overhead around hub-heavy frontiers.
+
+## Current Multi-GPU Prototype Results
+
+The optional multi-GPU prototype uses replicated CSR on each GPU and partitions
+output rows across devices. The current implementation exchanges bitmap
+frontiers through host memory after every BFS level, so this table should be
+read as a communication-overhead experiment rather than a tuned multi-GPU BFS.
+
+Source files:
+
+```text
+results/multigpu/benchmark_20260513_035802.csv
+results/multigpu/summary_20260513_035802.csv
+```
+
+Median of 3 runs on one Perlmutter 4-GPU node:
+
+| Graph | 1 GPU ms | 2 GPU ms | 2 GPU speedup | 4 GPU ms | 4 GPU speedup |
+|---|---:|---:|---:|---:|---:|
+| `large_dense` | 0.550 | 0.592 | 0.929x | 0.846 | 0.650x |
+| `large_powerlaw` | 0.599 | 0.664 | 0.902x | 0.836 | 0.717x |
+| `large_sparse` | 0.403 | 0.601 | 0.671x | 0.996 | 0.405x |
+| `roadNet-PA` | 50.029 | 72.367 | 0.691x | 125.306 | 0.399x |
+| `roadNet-TX` | 78.738 | 109.533 | 0.719x | 195.043 | 0.404x |
+| `roadNet-CA` | 76.352 | 107.816 | 0.708x | 189.867 | 0.402x |
+
+### Takeaway
+
+The replicated-CSR multi-GPU prototype does not speed up on these inputs.
+Adding GPUs reduces row work per device, but the current host-mediated
+frontier merge happens once per BFS level and dominates the saved computation,
+especially on high-diameter road networks.

@@ -36,16 +36,20 @@ modern parallel systems. This project compares three BFS design spaces:
 linear-algebraic GPU BFS, graph-first direction-optimizing GPU BFS, and
 distributed-memory MPI BFS. On a single NVIDIA A100, we implement five
 linear-algebraic sparse-matrix-vector-style BFS variants and a graph-first
-push/pull traversal. On Perlmutter CPU nodes, we extend the project with 1D
-and 2D MPI graph partitioning, bitmap frontier reductions, and SNAP road
-network benchmarks. The fastest SpMV-style GPU variant wins on all six
+push/pull traversal. We also add an optional replicated-CSR multi-GPU
+prototype to test whether extra GPUs help without communication-aware frontier
+exchange. On Perlmutter CPU nodes, we extend the project with 1D and 2D MPI
+graph partitioning, bitmap frontier reductions, and SNAP road network
+benchmarks. The fastest SpMV-style GPU variant wins on all six
 synthetic GPU inputs, with graph-first within 1.14--1.33x on random
 sparse/dense graphs but 2.69x slower on the power-law graph. In MPI, 2D
 partitioning improves the dense synthetic graph at 16 ranks, while 1D bitmap
 frontier reductions are consistently better on sparse road networks up to 64
-ranks. These results suggest that no single BFS formulation dominates: the
-best design depends on whether memory bandwidth, frontier construction,
-communication volume, or graph diameter is the limiting cost.
+ranks. The multi-GPU prototype shows negative scaling on 2 and 4 GPUs,
+highlighting the cost of per-level frontier synchronization. These results
+suggest that no single BFS formulation dominates: the best design depends on
+whether memory bandwidth, frontier construction, communication volume, or graph
+diameter is the limiting cost.
 \end{abstract}
 
 \begin{document}
@@ -79,6 +83,8 @@ The project contributions are:
     push-pull, and fused warp-bitmap;
     \item a CUDA graph-first BFS with top-down push, bottom-up pull, bitmap
     frontiers, and Beamer-style alpha/beta switching;
+    \item a replicated-CSR multi-GPU BFS prototype with 1, 2, and 4 GPU
+    measurements;
     \item 1D and 2D MPI BFS implementations with bitmap frontiers,
     bitwise-OR reductions, and SNAP road-network support;
     \item correctness validation against a Python BFS and benchmark results on
@@ -146,6 +152,20 @@ frontier size and frontier edge count each level. It switches from top-down to
 bottom-up when $m_f > |E|/\alpha$ and switches back when
 $|f_k| < |V|/\beta$, using $\alpha=14$ and $\beta=24$ by default.
 
+\subsection{Multi-GPU Linear-Algebraic Prototype}
+
+The optional multi-GPU extension keeps the linear-algebraic bitmap-pull
+formulation but partitions the output rows across multiple GPUs on one
+Perlmutter node. Each GPU stores a full CSR copy and owns a contiguous vertex
+range for writing the next frontier. At every BFS level, the host broadcasts
+the current frontier bitmap to all GPUs, launches the row-partitioned pull
+kernel on each device, copies each partial next-frontier bitmap back to the
+host, ORs those partial bitmaps together, and repeats. This replicated-CSR
+prototype is simple and useful as a scaling experiment, but it is intentionally
+not a production multi-GPU BFS: it pays a full host-mediated frontier exchange
+every level and does not use peer-to-peer GPU communication or a distributed
+CSR layout.
+
 \subsection{MPI BFS}
 
 The post-poster extension adds two CPU-only MPI BFS implementations. The 1D
@@ -202,9 +222,12 @@ on sparse road networks with many low-work levels.
 GPU experiments ran on one NVIDIA A100 on NERSC Perlmutter with
 \texttt{CUDA\_VISIBLE\_DEVICES=0}. Timings use CUDA events around the traversal
 only, excluding graph load and output. Each reported GPU number is the median
-of 10 runs. MPI experiments ran on Perlmutter CPU nodes with 10 trials for
-synthetic graphs and 3 trials for SNAP road networks. MPI timings use
-\texttt{MPI\_Wtime} around the BFS traversal.
+of 10 runs. Optional multi-GPU experiments ran on one 4-GPU Perlmutter node
+and report the median of 3 runs for 1, 2, and 4 requested GPUs. Those timings
+include the prototype's host-mediated bitmap synchronization between levels.
+MPI experiments ran on Perlmutter CPU nodes with 10 trials for synthetic graphs
+and 3 trials for SNAP road networks. MPI timings use \texttt{MPI\_Wtime} around
+the BFS traversal.
 
 We used six synthetic inputs: medium graphs with $10^3$ vertices and large
 graphs with $10^5$ vertices, covering chain, dense random, sparse random, and
@@ -263,6 +286,36 @@ warp-bitmap fusion is best on the large power-law graph, where high-degree hubs
 benefit from cooperative row scanning. Push-pull is not universally helpful in
 the SpMV code because its switching heuristic uses an average-degree estimate;
 on some inputs, the extra bookkeeping outweighs the saved work.
+
+\begin{table}[t]
+\centering
+\caption{Optional replicated-CSR multi-GPU BFS results. Speedup is relative to
+the same prototype using one GPU, so values below 1.0 indicate slowdown.}
+\label{tab:mgpu}
+\small
+\begin{tabular}{@{}l r r r@{}}
+\toprule
+Graph & 1 GPU ms & 2 GPU speedup & 4 GPU speedup \\
+\midrule
+large\_dense & 0.550 & 0.93x & 0.65x \\
+large\_powerlaw & 0.599 & 0.90x & 0.72x \\
+large\_sparse & 0.403 & 0.67x & 0.41x \\
+roadNet-PA & 50.029 & 0.69x & 0.40x \\
+roadNet-TX & 78.738 & 0.72x & 0.40x \\
+roadNet-CA & 76.352 & 0.71x & 0.40x \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Table~\ref{tab:mgpu} shows that the naive multi-GPU prototype does not scale:
+2 GPUs are slower than 1 GPU on every input, and 4 GPUs are slower still. This
+is an informative negative result. The per-level bitmap exchange is small in
+absolute bytes, but BFS performs one exchange per level, and the prototype
+routes every exchange through host memory. On road networks, this overhead is
+especially visible because roadNet-PA, roadNet-TX, and roadNet-CA require 541,
+722, and 554 BFS levels respectively. Extra GPUs reduce the number of output
+rows scanned per device, but the saved row-scan work is smaller than the added
+synchronization and device-management cost for these graphs.
 
 \FloatBarrier
 \section{MPI Results}
@@ -372,6 +425,9 @@ construction to compete with row-scan SpMV kernels. In distributed-memory MPI,
 the same BFS problem becomes a frontier communication problem: bitmap OR
 reductions are simple and robust, while 2D partitioning only helps when
 communication reduction exceeds the cost of additional coordination.
+The multi-GPU experiment reinforces the same point on a single node: simply
+adding devices is not enough if every level performs a centralized frontier
+merge.
 
 Our study has limitations. The GPU implementations are hand-written CUDA
 kernels rather than cuGraph or a production GraphBLAS backend. The MPI
@@ -379,9 +435,11 @@ implementations are CPU-only and load graphs by broadcasting edge arrays from
 rank 0, which is adequate for our project graphs but not scalable to
 Graph500-sized inputs. The 2D MPI implementation keeps global frontier and depth
 arrays for simplicity, so it tests a 2D work partition but not the full memory
-savings of a distributed 2D BFS. Finally, GPU and MPI timings should not be
-interpreted as direct hardware comparisons; they answer different design
-questions.
+savings of a distributed 2D BFS. The multi-GPU prototype similarly keeps a
+replicated CSR on every GPU and synchronizes through the host, so it should be
+read as a communication-cost probe rather than a tuned multi-GPU BFS. Finally,
+GPU and MPI timings should not be interpreted as direct hardware comparisons;
+they answer different design questions.
 
 \section{Future Work}
 
@@ -396,9 +454,11 @@ For MPI, a stronger 2D implementation would avoid storing the full frontier on
 every rank. The diagonal owner of each column block should broadcast frontier
 slices down process columns, and row owners should assemble only their
 partition of the next frontier. This would better realize the
-$O(\sqrt{P})$ communication model. A follow-up experiment should also include
-weak scaling on generated RMAT graphs and compare with a tuned distributed
-GraphBLAS implementation.
+$O(\sqrt{P})$ communication model. For multi-GPU BFS, the corresponding next
+step is to avoid host-mediated full-frontier exchange by using peer-to-peer or
+NCCL communication and a true distributed CSR layout. A follow-up experiment
+should also include weak scaling on generated RMAT graphs and compare with a
+tuned distributed GraphBLAS implementation.
 
 \section{Conclusion}
 
@@ -408,10 +468,12 @@ all current synthetic inputs, though graph-first remained close on random
 sparse/dense graphs. After the poster checkpoint, the MPI extension added a
 distributed-memory perspective: 2D partitioning improved dense synthetic graphs
 at higher rank counts, while 1D bitmap reductions were stronger on sparse road
-networks. Together, these experiments show why BFS remains a useful benchmark
-for parallel computing: the best algorithm is not simply the one with the most
-parallelism, but the one that best matches frontier structure to the memory and
-communication costs of the target machine.
+networks. The optional multi-GPU prototype did not scale because per-level
+frontier synchronization dominated the saved row-scan work. Together, these
+experiments show why BFS remains a useful benchmark for parallel computing:
+the best algorithm is not simply the one with the most parallelism, but the one
+that best matches frontier structure to the memory and communication costs of
+the target machine.
 
 \begin{acks}
 Experiments were run on NERSC Perlmutter. Source code, scripts, and benchmark
