@@ -1,6 +1,8 @@
 # Final Report
 
-LaTeX source and generated figures for the CS 5220 final project report.
+LaTeX source and generated figures for the CS 5220 final project report. The
+report uses the final-report format: single column, 11pt font, and 1-inch
+margins.
 
 Build from this directory:
 

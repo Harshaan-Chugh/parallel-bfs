@@ -1,33 +1,28 @@
-\documentclass[sigconf,nonacm]{acmart}
+\documentclass[11pt]{article}
 
-\settopmatter{printacmref=false}
-\renewcommand\footnotetextcopyrightpermission[1]{}
-\pagestyle{plain}
-
+\usepackage[margin=1in]{geometry}
 \usepackage{booktabs}
 \usepackage{array}
 \usepackage{graphicx}
 \usepackage{amsmath}
 \usepackage{xurl}
 \usepackage{placeins}
+\usepackage[hidelinks]{hyperref}
+\usepackage{enumitem}
+
+\pagestyle{plain}
+\setlist[itemize]{leftmargin=*, topsep=2pt, itemsep=1pt}
+\setlength{\parindent}{1.2em}
+\setlength{\parskip}{0.25em}
+\newcommand{\Description}[1]{}
 
 \title{Parallel Breadth-First Search: GPU Linear Algebra, Graph-First Traversal, and Distributed MPI Partitioning}
 
-\author{Aakaash Nattanmai}
-\affiliation{%
-  \institution{Cornell University}
-  \city{Ithaca}
-  \state{NY}
-  \country{USA}}
-\email{}
+\author{Aakaash Nattanmai\\Cornell University \and Harshaan Chugh\\Cornell University}
+\date{May 13, 2026}
 
-\author{Harshaan Chugh}
-\affiliation{%
-  \institution{Cornell University}
-  \city{Ithaca}
-  \state{NY}
-  \country{USA}}
-\email{}
+\begin{document}
+\maketitle
 
 \begin{abstract}
 Breadth-first search (BFS) is a core graph primitive, but its irregular
@@ -52,10 +47,7 @@ whether memory bandwidth, frontier construction, communication volume, or graph
 diameter is the limiting cost.
 \end{abstract}
 
-\begin{document}
-\maketitle
-
-\section{Introduction}
+\section{Hypothesis}
 
 BFS is a building block for shortest paths, connected components, centrality,
 web crawling, and many graph analytics pipelines. It is also a representative
@@ -66,16 +58,32 @@ load imbalance, and atomic update pressure. On distributed-memory systems, it
 turns into a communication problem because each frontier may contain vertices
 owned by many ranks.
 
-Our project asks how the choice of abstraction affects BFS performance. We
-started from the course suggestion to compare a graph-first BFS with a
-linear-algebraic formulation inspired by GraphBLAS. We then extended the study
-after the poster checkpoint with MPI implementations that compare 1D and 2D
-partitioning. Our hypothesis was that linear-algebraic GPU kernels would be
-competitive when frontier operations could be expressed as regular sparse row
-scans, while graph-first traversal would benefit when frontier sizes were small
-enough to avoid scanning most vertices. For MPI, we expected 2D partitioning to
-reduce communication at high rank counts, especially on graphs with enough
-edges to amortize its extra setup.
+Our project asks how the choice of abstraction affects BFS performance across
+parallel architectures. We started from the course suggestion to compare a
+graph-first BFS with a linear-algebraic formulation inspired by GraphBLAS. We
+then extended the study after the poster checkpoint with MPI implementations
+that compare 1D and 2D partitioning and with an optional multi-GPU prototype.
+Our hypothesis was that linear-algebraic GPU kernels would be competitive when
+frontier operations could be expressed as regular sparse row scans, while
+graph-first traversal would benefit when frontier sizes were small enough to
+avoid scanning most vertices. For MPI, we expected 2D partitioning to reduce
+communication at high rank counts, especially on graphs with enough edges to
+amortize its extra setup. For multi-GPU BFS, we expected the result to depend
+on whether the saved row-scan work exceeded the cost of synchronizing frontier
+bitmaps between devices.
+
+\section{Context and Contributions}
+
+This is a course project for CS 5220 rather than a subproject in a larger
+research effort. The code and benchmark scripts are reusable for future
+parallel-computing coursework because the repository keeps the graph loader,
+validation harness, CUDA kernels, MPI implementations, Slurm scripts, and raw
+CSV outputs together. Within the group, Aakaash focused on GPU benchmarking,
+multi-GPU evaluation, and integrating the GPU and multi-GPU results into the
+final analysis. Harshaan focused on the MPI extension, SNAP road-network
+benchmarking, and distributed-memory analysis. Both members contributed to
+CUDA BFS implementation, validation, poster preparation, and final report
+revision.
 
 The project contributions are:
 \begin{itemize}
@@ -91,7 +99,7 @@ The project contributions are:
     synthetic and real road graphs.
 \end{itemize}
 
-\section{Related Work}
+\section{Prior Work}
 
 Beamer et al. introduced direction-optimizing BFS~\cite{beamer2012}, which
 motivates the push/pull split in our graph-first CUDA implementation. In
@@ -110,7 +118,7 @@ partitioning work, especially 2D sparse matrix distributions used in
 CombBLAS~\cite{buluc2011}. Our SNAP road-network inputs follow the SNAP graph
 collection~\cite{snap}.
 
-\section{Implementations}
+\section{Empirical Methodology and Results}
 
 \subsection{Common Graph Representation}
 
@@ -184,7 +192,7 @@ still keeps a full global frontier and depth vector on each rank and performs a
 global OR to assemble the next frontier. This makes the 2D implementation a
 useful partitioning experiment, but not a fully memory-minimal distributed BFS.
 
-\section{Cost Model}
+\subsection{Communication and Kernel Cost Model}
 
 BFS performance can be separated into per-level work and per-level
 synchronization. On the GPU, a simplified traversal time is
@@ -217,7 +225,7 @@ matter, but the current prototype still pays a global-frontier cost. This model
 matches the experiments: 2D helps most on the dense synthetic graph and least
 on sparse road networks with many low-work levels.
 
-\section{Experimental Methodology}
+\subsection{Experimental Setup}
 
 GPU experiments ran on one NVIDIA A100 on NERSC Perlmutter with
 \texttt{CUDA\_VISIBLE\_DEVICES=0}. Timings use CUDA events around the traversal
@@ -236,11 +244,11 @@ roadNet-TX, and roadNet-CA. Correctness was checked on tiny graphs against a
 Python BFS. For SNAP, we checked that 1D runs with different rank counts and
 the 2D implementation produced matching depth vectors on the same source.
 
-\section{GPU Results}
+\subsection{Single-GPU Results}
 
 \begin{figure}[t]
     \centering
-    \includegraphics[width=\linewidth]{figures/gpu_head_to_head.pdf}
+    \includegraphics[width=0.78\linewidth]{figures/gpu_head_to_head.pdf}
     \caption{Single-GPU A100 runtime comparison. Each blue bar is the fastest
     linear-algebraic SpMV variant for that graph; orange is graph-first
     direction-optimizing BFS. The x-axis is logarithmic.}
@@ -318,11 +326,11 @@ rows scanned per device, but the saved row-scan work is smaller than the added
 synchronization and device-management cost for these graphs.
 
 \FloatBarrier
-\section{MPI Results}
+\subsection{MPI Results}
 
 \begin{figure}[t]
     \centering
-    \includegraphics[width=\linewidth]{figures/mpi_synthetic_speedup.pdf}
+    \includegraphics[width=0.78\linewidth]{figures/mpi_synthetic_speedup.pdf}
     \caption{MPI speedup on the large synthetic graphs. Speedup is normalized
     against the same strategy at one rank.}
     \Description{Three panel line chart of MPI speedup for large dense, power-law, and sparse graphs.}
@@ -348,7 +356,7 @@ large\_sparse & 0.003157 & 2.82x & 0.003262 & 3.48x \\
 
 \begin{figure}[t]
     \centering
-    \includegraphics[width=\linewidth]{figures/mpi_snap_speedup.pdf}
+    \includegraphics[width=0.78\linewidth]{figures/mpi_snap_speedup.pdf}
     \caption{MPI speedup on SNAP road networks. 1D partitioning scales better
     than the current 2D prototype on these sparse high-diameter road graphs.}
     \Description{Three panel line chart of MPI speedup for SNAP road networks.}
@@ -397,7 +405,7 @@ bitmap reduction in 1D is simple and efficient enough that the current 2D
 prototype's extra communication is not recovered.
 
 \FloatBarrier
-\section{Validation and Reproducibility}
+\subsection{Validation and Reproducibility}
 
 Correctness was checked in three ways. First, all tiny edgelist graphs were
 validated against \texttt{test-graphs/validate\_bfs.py}. Second, the GPU
@@ -415,7 +423,7 @@ the PDF plots tied to the raw data. Build instructions and result paths are
 documented in the repository README.
 
 \FloatBarrier
-\section{Discussion}
+\section{Challenges and Obstacles}
 
 The main lesson is that BFS optimizations are strongly graph- and
 architecture-dependent. On a single GPU, dense bitmap and warp-cooperative
@@ -441,7 +449,7 @@ read as a communication-cost probe rather than a tuned multi-GPU BFS. Finally,
 GPU and MPI timings should not be interpreted as direct hardware comparisons;
 they answer different design questions.
 
-\section{Future Work}
+\subsection{Future Work}
 
 The most immediate improvement is to make the graph-first GPU BFS more
 competitive by reducing queue construction overhead. A warp-aggregated push
@@ -460,7 +468,7 @@ NCCL communication and a true distributed CSR layout. A follow-up experiment
 should also include weak scaling on generated RMAT graphs and compare with a
 tuned distributed GraphBLAS implementation.
 
-\section{Conclusion}
+\subsection{Conclusion}
 
 We implemented and evaluated BFS across two parallel settings. On one A100,
 the fastest SpMV-style CUDA kernel outperformed our graph-first traversal on
@@ -475,10 +483,9 @@ the best algorithm is not simply the one with the most parallelism, but the one
 that best matches frontier structure to the memory and communication costs of
 the target machine.
 
-\begin{acks}
+\section*{Acknowledgments}
 Experiments were run on NERSC Perlmutter. Source code, scripts, and benchmark
 outputs are available at \url{https://github.com/Harshaan-Chugh/parallel-bfs}.
-\end{acks}
 
 \begin{thebibliography}{9}
 
