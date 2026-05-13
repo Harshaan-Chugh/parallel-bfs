@@ -92,7 +92,7 @@ def load_median_table(path):
 def save_mpi_synthetic_speedup():
     data = load_median_table(ROOT / "results" / "mpi_raw" / "timing_large_median.csv")
     graphs = ["large_dense", "large_powerlaw", "large_sparse"]
-    fig, axes = plt.subplots(1, 3, figsize=(8.2, 2.65), sharey=True)
+    fig, axes = plt.subplots(1, 3, figsize=(8.8, 2.65), sharey=True)
     for ax, graph in zip(axes, graphs):
         for strategy, marker, color in [("1D", "o", "#1f77b4"), ("2D", "s", "#d95f02")]:
             times = data[(graph, strategy)]
@@ -105,11 +105,11 @@ def save_mpi_synthetic_speedup():
         ax.set_xlabel("MPI ranks")
         ax.set_xticks([1, 4, 9, 16])
         ax.grid(True, alpha=0.25)
-    axes[0].set_ylabel("Speedup vs same strategy at 1 rank")
+    axes[0].set_ylabel("Speedup vs 1 rank")
     axes[0].legend(frameon=False, fontsize=8)
-    fig.suptitle("MPI BFS scaling on large synthetic graphs", y=1.02)
+    fig.suptitle("MPI BFS: Synthetic Graphs", y=1.02)
     fig.tight_layout()
-    fig.savefig(FIG_DIR / "mpi_synthetic_speedup.pdf")
+    fig.savefig(FIG_DIR / "mpi_synthetic_speedup.pdf", bbox_inches="tight")
     plt.close(fig)
 
 
@@ -128,7 +128,7 @@ def load_snap_medians():
 def save_mpi_snap_speedup():
     data = load_snap_medians()
     graphs = ["roadNet-PA", "roadNet-TX", "roadNet-CA"]
-    fig, axes = plt.subplots(1, 3, figsize=(8.2, 2.65), sharey=True)
+    fig, axes = plt.subplots(1, 3, figsize=(8.8, 2.65), sharey=True)
     for ax, graph in zip(axes, graphs):
         for strategy, marker, color in [("1D", "o", "#1f77b4"), ("2D", "s", "#d95f02")]:
             times = data[(graph, strategy)]
@@ -141,11 +141,11 @@ def save_mpi_snap_speedup():
         ax.set_xlabel("MPI ranks")
         ax.set_xticks([1, 4, 16, 64])
         ax.grid(True, alpha=0.25)
-    axes[0].set_ylabel("Speedup vs same strategy at 1 rank")
+    axes[0].set_ylabel("Speedup vs 1 rank")
     axes[0].legend(frameon=False, fontsize=8)
-    fig.suptitle("MPI BFS scaling on SNAP road networks", y=1.02)
+    fig.suptitle("MPI BFS: SNAP Road Networks", y=1.02)
     fig.tight_layout()
-    fig.savefig(FIG_DIR / "mpi_snap_speedup.pdf")
+    fig.savefig(FIG_DIR / "mpi_snap_speedup.pdf", bbox_inches="tight")
     plt.close(fig)
 
 

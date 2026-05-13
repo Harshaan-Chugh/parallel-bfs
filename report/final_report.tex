@@ -18,7 +18,7 @@
 
 \title{Parallel Breadth-First Search: GPU Linear Algebra, Graph-First Traversal, and Distributed MPI Partitioning}
 
-\author{Aakaash Nattanmai\\Cornell University \and Harshaan Chugh\\Cornell University}
+\author{Aakaash Nattanmai\thanks{Equal contribution.}\\Cornell University \and Harshaan Chugh\footnotemark[1]\\Cornell University}
 \date{May 13, 2026}
 
 \begin{document}
@@ -74,15 +74,12 @@ bitmaps between devices.
 
 \section{Context and Contributions}
 
-This is a course project for CS 5220 rather than a subproject in a larger
-research effort. The code and benchmark scripts are reusable for future
-parallel-computing coursework because the repository keeps the graph loader,
-validation harness, CUDA kernels, MPI implementations, Slurm scripts, and raw
-CSV outputs together. Within the group, Aakaash focused on GPU benchmarking,
+Both authors contributed equally to this project.
+Aakaash focused on GPU benchmarking,
 multi-GPU evaluation, and integrating the GPU and multi-GPU results into the
-final analysis. Harshaan focused on the MPI extension, SNAP road-network
-benchmarking, and distributed-memory analysis. Both members contributed to
-CUDA BFS implementation, validation, poster preparation, and final report
+final analysis. Harshaan focused on linear algebraic approaches to the single GPU CUDA implementation, the MPI extension, and distributed-memory analysis. Both members contributed to
+CUDA BFS implementation, validation, poster preparation, SNAP road-network
+benchmarking, and final report
 revision.
 
 The project contributions are:
@@ -485,7 +482,7 @@ the target machine.
 
 \section*{Acknowledgments}
 Experiments were run on NERSC Perlmutter. Source code, scripts, and benchmark
-outputs are available at \url{https://github.com/Harshaan-Chugh/parallel-bfs}.
+outputs are available at \url{https://github.com/Harshaan-Chugh/parallel-bfs}. We would further like to thank Professor Guidi for providing ample resources and slides to teach us foundation concepts used in this project. 
 
 \begin{thebibliography}{9}
 
