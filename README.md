@@ -123,6 +123,27 @@ make clean        # remove build artifacts
 python3 scripts/benchmark.py --repeats 10 --groups medium large
 ```
 
+### Optional multi-GPU GPU benchmarks
+
+The primary report follows the course guidance and uses one GPU. For optional
+1/2/4-GPU exploration, the repo also has a separate replicated-CSR multi-GPU
+SpMV prototype. It partitions output rows across GPUs and uses host-mediated
+bitmap frontier exchange each BFS level.
+
+```bash
+make linalg-multigpu
+./build/bfs_linalg_multigpu test-graphs/large_sparse.edgelist 0 2
+python3 scripts/benchmark_multigpu.py --repeats 3 --gpu-counts 1 2 4 --groups large
+```
+
+On Perlmutter, request one 4-GPU node:
+
+```bash
+sbatch -A <your_nersc_account> scripts/perlmutter_multigpu_bench.slurm
+```
+
+Outputs are written to `results/multigpu/`.
+
 ### Single-graph runs
 
 ```bash

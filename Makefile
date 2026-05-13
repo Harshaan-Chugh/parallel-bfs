@@ -1,6 +1,6 @@
 # ============================================================
 # Parallel BFS - Makefile
-# Builds both linear-algebraic and graph-first BFS implementations
+# Builds linear-algebraic, graph-first, and MPI BFS implementations
 # ============================================================
 
 NVCC      = nvcc
@@ -11,6 +11,7 @@ BUILD_DIR = build
 
 # Targets
 LINALG     = $(BUILD_DIR)/bfs_linalg
+LINALG_MGPU = $(BUILD_DIR)/bfs_linalg_multigpu
 GRAPHFIRST = $(BUILD_DIR)/bfs_graphfirst
 
 # MPI (CPU-only, no CUDA dependency)
@@ -20,7 +21,7 @@ MPIFLAGS = -O2 -Wall -std=c99
 MPI_1D = $(BUILD_DIR)/bfs_mpi_1d
 MPI_2D = $(BUILD_DIR)/bfs_mpi_2d
 
-.PHONY: all clean linalg graphfirst mpi mpi-1d mpi-2d
+.PHONY: all clean linalg linalg-multigpu graphfirst mpi mpi-1d mpi-2d
 
 all: $(BUILD_DIR) linalg graphfirst
 
@@ -29,6 +30,9 @@ $(BUILD_DIR):
 
 linalg: $(BUILD_DIR)
 	$(NVCC) $(NVCCFLAGS) -o $(LINALG) linear-algebraic/bfs_linalg.cu
+
+linalg-multigpu: $(BUILD_DIR)
+	$(NVCC) $(NVCCFLAGS) -o $(LINALG_MGPU) linear-algebraic/bfs_linalg_multigpu.cu
 
 graphfirst: $(BUILD_DIR)
 	$(NVCC) $(NVCCFLAGS) -o $(GRAPHFIRST) graph-first/bfs_graphfirst.cu
